@@ -1,6 +1,6 @@
 --[[
-    🤖 Rbot - PC Edition
-    Save ไฟล์ลง C:\Users\ชื่อคุณ\Downloads\
+    🤖 Rbot - PC Edition (Safe Version)
+    UI ขึ้นก่อน แล้วค่อย Save
 ]]
 
 -- ================== SERVICES ==================
@@ -12,130 +12,112 @@ local TweenService = game:GetService("TweenService")
 local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
+print("═══════════════════════════════════")
+print("🚀 Rbot กำลังโหลด...")
+
 -- ================== CHECK ==================
 local WORLD = {[2753915549]="Sea 1",[4442272183]="Sea 2",[7449423635]="Sea 3"}
-if not WORLD[game.PlaceId] then warn("❌ ใช้กับ Blox Fruits เท่านั้น!") return end
+if not WORLD[game.PlaceId] then 
+    warn("❌ ใช้กับ Blox Fruits เท่านั้น!") 
+    return 
+end
+print("✅ ตรวจสอบเกมผ่าน: " .. WORLD[game.PlaceId])
+
 local CommF = RS:WaitForChild("Remotes"):WaitForChild("CommF_")
 
--- ================================================================
--- ================== 📁 SAVE SYSTEM (PC) =========================
--- ================================================================
-
+-- ================== SAFE SAVE SYSTEM ==================
 local SAVE_SYSTEM = {}
+local SAVE_ENABLED = false  -- ปิดไว้ก่อน จะเปิดตอนหา path เจอ
 
--- หา Path ของ PC
+-- ตรวจว่า Executor รองรับ writefile ไหม
+if writefile and readfile and isfile then
+    SAVE_ENABLED = true
+    print("✅ Executor รองรับ writefile")
+else
+    warn("⚠️ Executor ไม่รองรับ writefile - Save จะไม่ทำงาน")
+end
+
 function SAVE_SYSTEM:GetPath()
-    -- ดึง username ของ Windows
-    local username = os.getenv("USERNAME") or os.getenv("username") or "User"
+    if not SAVE_ENABLED then return nil end
+    
+    -- ดึง username
+    local username = "User"
+    pcall(function()
+        username = os.getenv("USERNAME") or os.getenv("username") or "User"
+    end)
     
     local paths = {
-        -- PC Path หลัก
+        "C:\\Users\\" .. username .. "\\Downloads\\Rbot\\",
         "C:\\Users\\" .. username .. "\\Downloads\\",
-        -- Fallback
-        "C:\\Users\\" .. username .. "\\Documents\\",
+        "workspace\\",
         "workspace/",
     }
     
     for _, path in pairs(paths) do
-        local testFile = path .. "_rbot_test.txt"
         local ok = pcall(function()
+            if makefolder and isfolder then
+                if not isfolder(path) then
+                    makefolder(path)
+                end
+            end
+            local testFile = path .. "_rbot_test.txt"
             writefile(testFile, "test")
             delfile(testFile)
         end)
         
         if ok then
+            print("✅ ใช้ path: " .. path)
             return path
         end
     end
     
-    return "workspace/"
+    return nil
 end
 
--- สร้างโฟลเดอร์ Rbot
-function SAVE_SYSTEM:EnsureFolder()
-    local base = self:GetPath()
-    local folder = base .. "Rbot\\"
-    
-    if isfolder and not isfolder(folder) then
-        pcall(makefolder, folder)
-    end
-    
-    return folder
+local SAVE_PATH = SAVE_SYSTEM:GetPath()
+if SAVE_PATH then
+    print("📁 Save path: " .. SAVE_PATH)
+else
+    warn("⚠️ หา path ไม่ได้ - Save จะใช้ workspace")
+    SAVE_PATH = "workspace/"
 end
 
--- ชื่อไฟล์ Save
-function SAVE_SYSTEM:GetFileName()
-    return "Rbot_Save_" .. LP.Name .. ".json"
-end
-
--- Full path
-function SAVE_SYSTEM:GetFullPath()
-    return self:EnsureFolder() .. self:GetFileName()
-end
-
--- Save
 function SAVE_SYSTEM:Save(data)
-    if not writefile then 
-        warn("⚠️ Executor ไม่รองรับ writefile")
-        return false 
-    end
+    if not SAVE_ENABLED then return false end
     
-    local fullPath = self:GetFullPath()
+    local fullPath = SAVE_PATH .. "Rbot_Save_" .. LP.Name .. ".json"
     
-    local ok, err = pcall(function()
+    local ok = pcall(function()
         local json = game:GetService("HttpService"):JSONEncode(data)
         writefile(fullPath, json)
     end)
     
-    if ok then
-        print("💾 บันทึกสำเร็จ: " .. fullPath)
-        return true
-    else
-        warn("❌ บันทึกไม่สำเร็จ: " .. tostring(err))
-        return false
-    end
+    return ok
 end
 
--- Load
 function SAVE_SYSTEM:Load()
-    if not readfile or not isfile then
-        warn("⚠️ Executor ไม่รองรับ readfile")
-        return nil
-    end
+    if not SAVE_ENABLED then return nil end
     
-    local fullPath = self:GetFullPath()
+    local fullPath = SAVE_PATH .. "Rbot_Save_" .. LP.Name .. ".json"
     
-    if not isfile(fullPath) then
-        print("📂 ยังไม่มีไฟล์ Save - จะสร้างใหม่")
-        return nil
-    end
+    if not isfile(fullPath) then return nil end
     
     local ok, data = pcall(function()
-        local content = readfile(fullPath)
-        return game:GetService("HttpService"):JSONDecode(content)
+        return game:GetService("HttpService"):JSONDecode(readfile(fullPath))
     end)
     
-    if ok and data then
-        print("📂 โหลดสำเร็จ: " .. fullPath)
-        return data
-    else
-        warn("❌ โหลดไม่สำเร็จ")
-        return nil
-    end
+    if ok then return data end
+    return nil
 end
 
--- ================================================================
--- ================== 📋 CONFIG ===================================
--- ================================================================
+function SAVE_SYSTEM:GetFullPath()
+    return SAVE_PATH .. "Rbot_Save_" .. LP.Name .. ".json"
+end
 
+-- ================== CONFIG ==================
 local DEFAULT_CFG = {
     AutoFarmLevel = false,
-    AutoFarmBoss = false,
-    AutoFarmChest = false,
     MagnetToken = false,
-    AutoEquipWeapon = false,
-    SelectedWeapon = "-- None --",
-    SelectedBoss = "-- None --",
     AutoSkill = true,
     AutoHaki = true,
     FastAttack = true,
@@ -144,37 +126,34 @@ local DEFAULT_CFG = {
     FarmDistance = 30,
     NoClip = false,
     AntiAFK = true,
-    LastSave = os.time(),
-    Version = "PC-2.3",
-    PlayerName = LP.Name,
+    Version = "PC-Safe",
 }
 
-local CFG = DEFAULT_CFG
-local saved = SAVE_SYSTEM:Load()
-if saved then
-    for k, v in pairs(saved) do CFG[k] = v end
-    print("✅ โหลดค่าที่เคยบันทึกไว้")
-else
-    print("📝 ใช้ค่าเริ่มต้น")
-end
+local CFG = {}
+for k, v in pairs(DEFAULT_CFG) do CFG[k] = v end
+
+-- โหลดค่าเก่า (ถ้ามี)
+pcall(function()
+    local saved = SAVE_SYSTEM:Load()
+    if saved then
+        for k, v in pairs(saved) do
+            if DEFAULT_CFG[k] ~= nil then CFG[k] = v end
+        end
+        print("✅ โหลดค่าที่เคยบันทึกไว้")
+    end
+end)
 
 local function AutoSave()
-    CFG.LastSave = os.time()
-    SAVE_SYSTEM:Save(CFG)
+    pcall(function() SAVE_SYSTEM:Save(CFG) end)
 end
 
--- Auto save ทุก 30 วิ
 task.spawn(function()
     while task.wait(30) do AutoSave() end
 end)
 
--- บันทึกตอนออก
 game:BindToClose(function() AutoSave() end)
 
--- ================================================================
--- ================== 🎯 FARM =====================================
--- ================================================================
-
+-- ================== FARM FUNCTIONS ==================
 local function C() return LP.Character or LP.CharacterAdded:Wait() end
 local function HRP() return C():WaitForChild("HumanoidRootPart") end
 local function HUM() return C():WaitForChild("Humanoid") end
@@ -213,7 +192,7 @@ local function Skills()
     end
 end
 
--- Anti AFK
+-- ================== SYSTEMS ==================
 LP.Idled:Connect(function()
     if CFG.AntiAFK then
         VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -222,13 +201,15 @@ LP.Idled:Connect(function()
     end
 end)
 
--- Fast Attack
 task.spawn(function()
     local ok, CF = pcall(function()
         local c = require(LP.PlayerScripts:WaitForChild("CombatFramework"))
         return getupvalues(c)[2]
     end)
-    if not ok then warn("⚠️ FastAttack ไม่พร้อม") return end
+    if not ok then 
+        warn("⚠️ FastAttack ไม่พร้อม")
+        return 
+    end
     while task.wait() do
         if CFG.FastAttack then
             pcall(function()
@@ -241,7 +222,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Haki
 task.spawn(function()
     while task.wait(1) do
         if CFG.AutoHaki then
@@ -254,7 +234,6 @@ task.spawn(function()
     end
 end)
 
--- Stats
 task.spawn(function()
     while task.wait(0.5) do
         pcall(function()
@@ -267,7 +246,6 @@ task.spawn(function()
     end
 end)
 
--- NoClip
 task.spawn(function()
     while task.wait() do
         if CFG.NoClip and C() then
@@ -278,7 +256,6 @@ task.spawn(function()
     end
 end)
 
--- Magnet
 task.spawn(function()
     while task.wait() do
         if CFG.MagnetToken then
@@ -297,7 +274,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Farm
 task.spawn(function()
     while task.wait(0.5) do
         if CFG.AutoFarmLevel then
@@ -310,7 +286,6 @@ task.spawn(function()
                         if (hrp.Position - HRP().Position).Magnitude > 300 then Tween(t)
                         else
                             HRP().CFrame = t
-                            if CFG.SelectedWeapon ~= "-- None --" then Equip(CFG.SelectedWeapon) end
                             Click(); Skills()
                         end
                         break
@@ -321,21 +296,30 @@ task.spawn(function()
     end
 end)
 
+print("✅ ระบบทั้งหมดโหลดเสร็จ - กำลังสร้าง UI...")
+
 -- ================================================================
 -- ================== 🎨 UI =======================================
 -- ================================================================
 
+-- ลบ UI เก่า (ถ้ามี)
+local oldUI = game.CoreGui:FindFirstChild("RbotPC")
+if oldUI then oldUI:Destroy() end
+
 local SG = Instance.new("ScreenGui")
 SG.Name = "RbotPC"
-SG.Parent = game:GetService("CoreGui")
+SG.Parent = game.CoreGui
 SG.ResetOnSpawn = false
 SG.IgnoreGuiInset = true
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.DisplayOrder = 999
 
 local Main = Instance.new("Frame")
+Main.Name = "Main"
 Main.Size = UDim2.new(0, 700, 0, 500)
 Main.Position = UDim2.new(0.5, -350, 0.5, -250)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-Main.BackgroundTransparency = 0.05
+Main.BackgroundTransparency = 0
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
 Main.Parent = SG
@@ -344,6 +328,7 @@ local MC = Instance.new("UICorner")
 MC.CornerRadius = UDim.new(0, 14)
 MC.Parent = Main
 
+-- Header
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, 0, 0, 60)
 Header.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
@@ -361,14 +346,6 @@ HeaderCover.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
 HeaderCover.BorderSizePixel = 0
 HeaderCover.Parent = Header
 
-local HGrad = Instance.new("UIGradient")
-HGrad.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 100))
-}
-HGrad.Rotation = 30
-HGrad.Parent = Header
-
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 400, 0, 30)
 Title.Position = UDim2.new(0, 25, 0, 8)
@@ -384,7 +361,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(0, 500, 0, 18)
 SubTitle.Position = UDim2.new(0, 25, 0, 34)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Blox Fruits | " .. WORLD[game.PlaceId] .. " | Save ที่ Downloads\\Rbot\\"
+SubTitle.Text = "Blox Fruits | " .. WORLD[game.PlaceId] .. " | " .. LP.Name
 SubTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
 SubTitle.Font = Enum.Font.Gotham
 SubTitle.TextSize = 11
@@ -411,6 +388,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     SG:Destroy()
 end)
 
+-- Content
 local Content = Instance.new("Frame")
 Content.Size = UDim2.new(1, -30, 1, -80)
 Content.Position = UDim2.new(0, 15, 0, 70)
@@ -421,7 +399,7 @@ local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1, 0, 1, 0)
 Scroll.BackgroundTransparency = 1
 Scroll.BorderSizePixel = 0
-Scroll.ScrollBarThickness = 3
+Scroll.ScrollBarThickness = 4
 Scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 60, 60)
 Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 Scroll.Parent = Content
@@ -446,7 +424,10 @@ Header.InputEnded:Connect(function(i)
 end)
 UserInput.InputChanged:Connect(function(i)
     if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + (i.Position.X - dragStart.X), startPos.Y.Scale, startPos.Y.Offset + (i.Position.Y - dragStart.Y))
+        Main.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + (i.Position.X - dragStart.X),
+            startPos.Y.Scale, startPos.Y.Offset + (i.Position.Y - dragStart.Y)
+        )
     end
 end)
 
@@ -467,7 +448,6 @@ local function Toggle(name, desc, key)
     local F = Instance.new("Frame")
     F.Size = UDim2.new(1, -8, 0, 56)
     F.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
-    F.BackgroundTransparency = 0.3
     F.BorderSizePixel = 0
     F.Parent = Scroll
 
@@ -542,7 +522,6 @@ local function Slider(name, min, max, key)
     local F = Instance.new("Frame")
     F.Size = UDim2.new(1, -8, 0, 66)
     F.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
-    F.BackgroundTransparency = 0.3
     F.BorderSizePixel = 0
     F.Parent = Scroll
 
@@ -632,7 +611,6 @@ local function Button(name, desc, callback)
     local F = Instance.new("Frame")
     F.Size = UDim2.new(1, -8, 0, 56)
     F.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
-    F.BackgroundTransparency = 0.3
     F.BorderSizePixel = 0
     F.Parent = Scroll
 
@@ -668,31 +646,20 @@ local function Button(name, desc, callback)
     Btn.Text = ""
     Btn.Parent = F
 
-    Btn.MouseEnter:Connect(function()
-        TweenService:Create(F, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
-    end)
-    Btn.MouseLeave:Connect(function()
-        TweenService:Create(F, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
-    end)
     Btn.MouseButton1Click:Connect(function() pcall(callback) end)
 end
 
 -- ================== BUILD UI ==================
-Section("📁 ไฟล์ Save (PC)")
-Button("📂 ตำแหน่งไฟล์", SAVE_SYSTEM:GetFullPath(), function()
-    setclipboard(SAVE_SYSTEM:GetFullPath())
-    print("📋 Copy path: " .. SAVE_SYSTEM:GetFullPath())
+Section("📁 ไฟล์ Save")
+Button("📂 Path ของไฟล์", SAVE_SYSTEM:GetFullPath(), function()
+    if setclipboard then
+        setclipboard(SAVE_SYSTEM:GetFullPath())
+        print("📋 Copy path แล้ว: " .. SAVE_SYSTEM:GetFullPath())
+    end
 end)
-Button("💾 บันทึกเลย", "บันทึกค่าปัจจุบันทันที", function()
+Button("💾 บันทึกเลย", "Save ค่าปัจจุบัน", function()
     AutoSave()
     print("💾 บันทึกแล้ว!")
-end)
-Button("📂 โหลดค่า", "โหลดค่าที่บันทึกไว้", function()
-    local data = SAVE_SYSTEM:Load()
-    if data then
-        for k, v in pairs(data) do CFG[k] = v end
-        print("✅ โหลดใหม่สำเร็จ - รีสคริปต์")
-    end
 end)
 
 Section("🌾 ฟาร์ม")
@@ -716,7 +683,7 @@ Button("🔄 Rejoin", "กลับเซิร์ฟเดิม", function()
     AutoSave()
     game:GetService("TeleportService"):Teleport(game.PlaceId, LP)
 end)
-Button("❌ ปิด UI", "ปิดหน้าต่าง UI", function()
+Button("❌ ปิด UI", "ปิดหน้าต่าง", function()
     AutoSave()
     SG:Destroy()
 end)
@@ -729,9 +696,8 @@ UserInput.InputBegan:Connect(function(i, g)
     end
 end)
 
--- ================== STARTUP ==================
-print("═══════════════════════════════════════")
-print("✅ Rbot PC Edition โหลดสำเร็จ!")
+print("═══════════════════════════════════")
+print("✅ Rbot พร้อมใช้งาน!")
 print("📁 Save path: " .. SAVE_SYSTEM:GetFullPath())
-print("💾 Auto save ทุก 30 วินาที")
-print("═══════════════════════════════════════")
+print("⌨️ กด Right Ctrl เพื่อซ่อน/แสดง UI")
+print("═══════════════════════════════════")
