@@ -1,7 +1,6 @@
 --[[
-    🤖 Rbot Premium v3.2
-    ✅ Fast Click + Auto Farm + Logo Toggle
-    Beautiful Modern Design 2026
+    🤖 Rbot Premium v3.3
+    ✅ Auto Quest + Auto Attack + Logo Toggle
 ]]
 
 -- ================== SERVICES ==================
@@ -15,7 +14,7 @@ local Lighting = game:GetService("Lighting")
 local TPS = game:GetService("TeleportService")
 local LP = Players.LocalPlayer
 
-print("=== Rbot v3.2 Loading ===")
+print("=== Rbot v3.3 Loading ===")
 
 -- ================== CHECK GAME ==================
 local WORLD = {
@@ -32,16 +31,17 @@ print("🎮 Game: " .. WORLD[game.PlaceId])
 -- ================== CONFIG ==================
 local CFG = {
     AutoFarm = false,
+    AutoQuest = true,       -- รับเควสต์ก่อนฟาร์ม
     Magnet = false,
     AutoSkill = true,
     AutoHaki = true,
     FastAttack = true,
     AutoClick = true,
     NoClip = false,
+    BringMobs = false,      -- ดึงมอนเข้าหา
     WalkSpeed = 16,
     JumpPower = 50,
     Distance = 30,
-    ClickDelay = 0.05,  -- ความเร็วคลิก (ยิ่งน้อยยิ่งเร็ว)
 }
 
 -- ================== HELPERS ==================
@@ -51,18 +51,6 @@ local function OnChar(c)
     cachedChar = c
     cachedHRP = c:WaitForChild("HumanoidRootPart", 10)
     cachedHum = c:WaitForChild("Humanoid", 10)
-    -- Anti-fall
-    task.spawn(function()
-        while cachedChar == c and c.Parent do
-            task.wait(1)
-            local h = c:FindFirstChild("Humanoid")
-            if h and h.Health > 0 and h:GetState() == Enum.HumanoidStateType.Freefall then
-                if h.FloorMaterial == Enum.Material.Air and c:FindFirstChild("HumanoidRootPart") then
-                    -- กำลังตก ไม่ต้องทำอะไร
-                end
-            end
-        end
-    end)
 end
 
 if LP.Character then OnChar(LP.Character) end
@@ -84,7 +72,177 @@ local function FormatNum(n)
     else return tostring(math.floor(n)) end
 end
 
--- ================== ⚡ FAST CLICK ==================
+-- ================== QUEST DATABASE ==================
+-- เควสต์ทั้งหมดใน Blox Fruits (ชื่อ, Level ที่ต้องการ)
+local QUESTS = {
+    -- Sea 1
+    {Name = "Bandit",        Level = 1,    NPC = "Bandit",       Island = "Starter Island"},
+    {Name = "Monkey",        Level = 1,    NPC = "Monkey",       Island = "Starter Island"},
+    {Name = "Blade Bandit",  Level = 15,   NPC = "Blade Bandit", Island = "Jungle"},
+    {Name = "Jungle Pirate", Level = 20,   NPC = "Jungle Pirate",Island = "Jungle"},
+    {Name = "Desert Bandit", Level = 30,   NPC = "Desert Bandit",Island = "Desert"},
+    {Name = "Desert Officer",Level = 40,   NPC = "Desert Officer",Island = "Desert"},
+    {Name = "Snow Bandit",   Level = 50,   NPC = "Snow Bandit",  Island = "Frozen Village"},
+    {Name = "Snowman",       Level = 60,   NPC = "Snowman",      Island = "Frozen Village"},
+    {Name = "Frost Bandit",  Level = 75,   NPC = "Frost Bandit", Island = "Marine Ford"},
+    {Name = "Marine",        Level = 85,   NPC = "Marine",       Island = "Marine Ford"},
+    {Name = "Sky Bandit",    Level = 90,   NPC = "Sky Bandit",   Island = "Skylands"},
+    {Name = "Dark Master",   Level = 100,  NPC = "Dark Master",  Island = "Skylands"},
+    {Name = "Fighter",       Level = 120,  NPC = "Fighter",      Island = "Colosseum"},
+    {Name = "Fishman",       Level = 150,  NPC = "Fishman",      Island = "Underwater City"},
+    {Name = "Magma Ninja",   Level = 175,  NPC = "Magma Ninja",  Island = "Fountain City"},
+    {Name = "Pirate Boss",   Level = 200,  NPC = "Pirate Boss",  Island = "Fountain City"},
+    {Name = "Snow Trooper",  Level = 250,  NPC = "Snow Trooper", Island = "Kingdom of Rose"},
+    {Name = "Winter Warrior",Level = 300,  NPC = "Winter Warrior",Island = "Kingdom of Rose"},
+    {Name = "Lab Subordinate",Level = 350, NPC = "Lab Subordinate",Island = "Green Zone"},
+    {Name = "Horned Warrior",Level = 400,  NPC = "Horned Warrior",Island = "Green Zone"},
+    {Name = "Military Soldier",Level = 450,NPC = "Military Soldier",Island = "Graveyard"},
+    {Name = "Military Spy",  Level = 500,  NPC = "Military Spy", Island = "Graveyard"},
+    {Name = "Reborn Skeleton",Level = 550, NPC = "Reborn Skeleton",Island = "Graveyard"},
+    {Name = "Living Zombie", Level = 600,  NPC = "Living Zombie",Island = "Graveyard"},
+    {Name = "Demonic Soul",  Level = 650,  NPC = "Demonic Soul", Island = "Graveyard"},
+    {Name = "Possessed Mummy",Level = 700, NPC = "Possessed Mummy",Island = "Graveyard"},
+    {Name = "Snow Lurker",   Level = 725,  NPC = "Snow Lurker",  Island = "Snow Mountain"},
+    {Name = "Yeti",          Level = 750,  NPC = "Yeti",         Island = "Snow Mountain"},
+    {Name = "Pirate Millionaire",Level = 775,NPC = "Pirate Millionaire",Island = "Hot and Cold"},
+    {Name = "Pistol Billionaire",Level = 800,NPC = "Pistol Billionaire",Island = "Hot and Cold"},
+    {Name = "Dragon Crew Archer",Level = 850,NPC = "Dragon Crew Archer",Island = "Hot and Cold"},
+    {Name = "Dragon Crew Warrior",Level = 875,NPC = "Dragon Crew Warrior",Island = "Hot and Cold"},
+    {Name = "Amazon",        Level = 900,  NPC = "Amazon",       Island = "Haunted Castle"},
+    {Name = "Island Empress",Level = 925,  NPC = "Island Empress",Island = "Haunted Castle"},
+    {Name = "Hydra Enforcer",Level = 950,  NPC = "Hydra Enforcer",Island = "Haunted Castle"},
+    {Name = "Venomous Assailant",Level = 975,NPC = "Venomous Assailant",Island = "Haunted Castle"},
+    {Name = "Reborn Skeleton",Level = 1000,NPC = "Reborn Skeleton",Island = "Cursed Ship"},
+    {Name = "Living Zombie", Level = 1025, NPC = "Living Zombie",Island = "Cursed Ship"},
+    {Name = "Demonic Soul",  Level = 1050, NPC = "Demonic Soul", Island = "Cursed Ship"},
+    {Name = "Possessed Mummy",Level = 1075,NPC = "Possessed Mummy",Island = "Cursed Ship"},
+    {Name = "Snow Lurker",   Level = 1100, NPC = "Snow Lurker",  Island = "Cursed Ship"},
+    {Name = "Ice Jailer",    Level = 1125, NPC = "Ice Jailer",   Island = "Cursed Ship"},
+    {Name = "Cursed Pirate", Level = 1150, NPC = "Cursed Pirate",Island = "Cursed Ship"},
+    {Name = "Cursed Captain",Level = 1175, NPC = "Cursed Captain",Island = "Cursed Ship"},
+    {Name = "Cursed Skeleton",Level = 1200,NPC = "Cursed Skeleton",Island = "Cursed Ship"},
+    {Name = "Sea Soldier",   Level = 1250, NPC = "Sea Soldier",  Island = "Forgotten Island"},
+    {Name = "Water Fighter", Level = 1300, NPC = "Water Fighter",Island = "Forgotten Island"},
+    {Name = "Pirate Millionaire",Level = 1350,NPC = "Pirate Millionaire",Island = "Forgotten Island"},
+    {Name = "Forest Pirate", Level = 1375, NPC = "Forest Pirate",Island = "Forgotten Island"},
+    {Name = "Mythological Pirate",Level = 1425,NPC = "Mythological Pirate",Island = "Forgotten Island"},
+    {Name = "Jungle Pirate", Level = 1475, NPC = "Jungle Pirate",Island = "Forgotten Island"},
+    {Name = "Musketeer Pirate",Level = 1500,NPC = "Musketeer Pirate",Island = "Forgotten Island"},
+    -- Sea 2 (เริ่มที่ Lv 700)
+    {Name = "Raider",        Level = 700,  NPC = "Raider",       Island = "Kingdom of Rose"},
+    {Name = "Mercenary",     Level = 725,  NPC = "Mercenary",    Island = "Kingdom of Rose"},
+    {Name = "Swan Pirate",   Level = 775,  NPC = "Swan Pirate",  Island = "Kingdom of Rose"},
+    {Name = "Factory Staff", Level = 800,  NPC = "Factory Staff",Island = "Kingdom of Rose"},
+    {Name = "Marine Captain",Level = 850,  NPC = "Marine Captain",Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 900,  NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 950,  NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1000, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1050, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1100, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1150, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1200, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1250, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1300, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1350, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1400, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1450, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Zombie",        Level = 1500, NPC = "Zombie",       Island = "Kingdom of Rose"},
+    {Name = "Reborn Skeleton",Level = 1550,NPC = "Reborn Skeleton",Island = "Cursed Ship"},
+    {Name = "Living Zombie", Level = 1625, NPC = "Living Zombie",Island = "Cursed Ship"},
+    {Name = "Demonic Soul",  Level = 1700, NPC = "Demonic Soul", Island = "Cursed Ship"},
+    {Name = "Possessed Mummy",Level = 1775,NPC = "Possessed Mummy",Island = "Cursed Ship"},
+    {Name = "Snow Lurker",   Level = 1850, NPC = "Snow Lurker",  Island = "Cursed Ship"},
+    {Name = "Ice Jailer",    Level = 1900, NPC = "Ice Jailer",   Island = "Cursed Ship"},
+    {Name = "Cursed Pirate", Level = 1950, NPC = "Cursed Pirate",Island = "Cursed Ship"},
+    {Name = "Cursed Captain",Level = 2000, NPC = "Cursed Captain",Island = "Cursed Ship"},
+    {Name = "Cursed Skeleton",Level = 2050,NPC = "Cursed Skeleton",Island = "Cursed Ship"},
+    {Name = "Sea Soldier",   Level = 2100, NPC = "Sea Soldier",  Island = "Forgotten Island"},
+    {Name = "Water Fighter", Level = 2150, NPC = "Water Fighter",Island = "Forgotten Island"},
+    {Name = "Pirate Millionaire",Level = 2200,NPC = "Pirate Millionaire",Island = "Forgotten Island"},
+    {Name = "Forest Pirate", Level = 2250, NPC = "Forest Pirate",Island = "Forgotten Island"},
+    {Name = "Mythological Pirate",Level = 2300,NPC = "Mythological Pirate",Island = "Forgotten Island"},
+    {Name = "Jungle Pirate", Level = 2350, NPC = "Jungle Pirate",Island = "Forgotten Island"},
+    {Name = "Musketeer Pirate",Level = 2400,NPC = "Musketeer Pirate",Island = "Forgotten Island"},
+    -- Sea 3
+    {Name = "Pirate Luffy",  Level = 1500, NPC = "Pirate Luffy", Island = "Port Town"},
+    {Name = "Pirate Crew Member",Level = 1525,NPC = "Pirate Crew Member",Island = "Port Town"},
+    {Name = "Marine Recruit",Level = 1550, NPC = "Marine Recruit",Island = "Port Town"},
+    {Name = "Marine Grunt",  Level = 1575, NPC = "Marine Grunt", Island = "Port Town"},
+    {Name = "Fishman Raider",Level = 1625, NPC = "Fishman Raider",Island = "Hydra Island"},
+    {Name = "Fishman Captain",Level = 1675,NPC = "Fishman Captain",Island = "Hydra Island"},
+    {Name = "Forest Pirate", Level = 1725, NPC = "Forest Pirate",Island = "Hydra Island"},
+    {Name = "Mythological Pirate",Level = 1775,NPC = "Mythological Pirate",Island = "Hydra Island"},
+    {Name = "Jungle Pirate", Level = 1825, NPC = "Jungle Pirate",Island = "Hydra Island"},
+    {Name = "Musketeer Pirate",Level = 1875,NPC = "Musketeer Pirate",Island = "Hydra Island"},
+    {Name = "Reborn Skeleton",Level = 1925,NPC = "Reborn Skeleton",Island = "Haunted Castle"},
+    {Name = "Living Zombie", Level = 1975, NPC = "Living Zombie",Island = "Haunted Castle"},
+    {Name = "Demonic Soul",  Level = 2025, NPC = "Demonic Soul", Island = "Haunted Castle"},
+    {Name = "Possessed Mummy",Level = 2075,NPC = "Possessed Mummy",Island = "Haunted Castle"},
+    {Name = "Snow Lurker",   Level = 2125, NPC = "Snow Lurker",  Island = "Snow Mountain"},
+    {Name = "Ice Jailer",    Level = 2175, NPC = "Ice Jailer",   Island = "Snow Mountain"},
+    {Name = "Cursed Pirate", Level = 2225, NPC = "Cursed Pirate",Island = "Snow Mountain"},
+    {Name = "Cursed Captain",Level = 2275, NPC = "Cursed Captain",Island = "Snow Mountain"},
+    {Name = "Cursed Skeleton",Level = 2325,NPC = "Cursed Skeleton",Island = "Snow Mountain"},
+    {Name = "Sea Soldier",   Level = 2375, NPC = "Sea Soldier",  Island = "Floating Turtle"},
+    {Name = "Water Fighter", Level = 2425, NPC = "Water Fighter",Island = "Floating Turtle"},
+    {Name = "Pirate Millionaire",Level = 2475,NPC = "Pirate Millionaire",Island = "Floating Turtle"},
+    {Name = "Forest Pirate", Level = 2525, NPC = "Forest Pirate",Island = "Floating Turtle"},
+    {Name = "Mythological Pirate",Level = 2575,NPC = "Mythological Pirate",Island = "Floating Turtle"},
+}
+
+-- หาเควสต์ที่ตรงกับ Level ปัจจุบัน
+local function GetBestQuest()
+    local lvl = SafeGet(LP.Data, "Level")
+    local best = nil
+    for _, q in pairs(QUESTS) do
+        if q.Level <= lvl then
+            if not best or q.Level > best.Level then
+                best = q
+            end
+        end
+    end
+    return best
+end
+
+-- ================== QUEST SYSTEM ==================
+local currentQuest = nil
+
+local function GetQuest()
+    local best = GetBestQuest()
+    if not best then return false end
+    
+    -- รับเควสต์ผ่าน Remote
+    pcall(function()
+        RS.Remotes.CommF_:InvokeServer("StartQuest", best.Name, best.Level)
+    end)
+    
+    currentQuest = best
+    print("📜 รับเควสต์: " .. best.Name .. " (Lv." .. best.Level .. ")")
+    return true
+end
+
+-- เช็คว่ารับเควสต์อยู่หรือไม่
+local function HasQuest()
+    local ok, has = pcall(function()
+        return LP.PlayerGui.Main.Quest.Visible
+    end)
+    return ok and has
+end
+
+-- เช็คจำนวนมอนที่ฆ่า
+local function GetQuestProgress()
+    local ok, txt = pcall(function()
+        return LP.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text
+    end)
+    if ok and txt then
+        -- format: "Defeat 5 Bandit"
+        local current, total = txt:match("(%d+)/(%d+)")
+        return tonumber(current) or 0, tonumber(total) or 0
+    end
+    return 0, 0
+end
+
+-- ================== CLICK ==================
 local function Click()
     pcall(function()
         VU:CaptureController()
@@ -92,36 +250,36 @@ local function Click()
     end)
 end
 
--- Fast Click Loop (สำคัญ! ทำให้คลิกเร็วมาก)
+-- Fast Click Loop
 task.spawn(function()
     while task.wait() do
         if CFG.AutoClick then
             pcall(function()
+                if CFG.AutoFarm then
+                    Click()
+                    return
+                end
+                -- ถ้าไม่ AutoFarm คลิกเฉพาะตอนมีมอนใกล้
                 local h = HRP()
                 if not h then return end
-                -- เช็คว่ามีมอนใกล้ๆ หรือ AutoFarm เปิดอยู่
-                local shouldClick = CFG.AutoFarm
-                if not shouldClick then
-                    local en = workspace:FindFirstChild("Enemies")
-                    if en then
-                        for _, m in pairs(en:GetChildren()) do
-                            local hrp = m:FindFirstChild("HumanoidRootPart")
-                            local hum = m:FindFirstChild("Humanoid")
-                            if hrp and hum and hum.Health > 0 
-                               and (hrp.Position - h.Position).Magnitude <= 100 then
-                                shouldClick = true
-                                break
-                            end
+                local en = workspace:FindFirstChild("Enemies")
+                if en then
+                    for _, m in pairs(en:GetChildren()) do
+                        local hrp = m:FindFirstChild("HumanoidRootPart")
+                        local hum = m:FindFirstChild("Humanoid")
+                        if hrp and hum and hum.Health > 0 
+                           and (hrp.Position - h.Position).Magnitude <= 100 then
+                            Click()
+                            return
                         end
                     end
                 end
-                if shouldClick then Click() end
             end)
         end
     end
 end)
 
--- ================== ⌨️ SKILL COMBO ==================
+-- ================== SKILL COMBO ==================
 local SKILL_KEYS = {
     Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V,
     Enum.KeyCode.F, Enum.KeyCode.E, Enum.KeyCode.Q, Enum.KeyCode.R,
@@ -135,16 +293,12 @@ local function PressKey(keyCode)
     end)
 end
 
--- Fast Skill Loop
 task.spawn(function()
     while task.wait(0.3) do
         if CFG.AutoSkill then
             pcall(function()
-                local c = Char()
                 local h = HRP()
-                if not c or not h then return end
-                
-                -- เช็คว่ามีมอนใกล้ๆ
+                if not h then return end
                 local hasEnemy = false
                 local en = workspace:FindFirstChild("Enemies")
                 if en then
@@ -158,7 +312,6 @@ task.spawn(function()
                         end
                     end
                 end
-                
                 if hasEnemy then
                     for _, k in pairs(SKILL_KEYS) do
                         PressKey(k)
@@ -249,10 +402,86 @@ task.spawn(function()
     end
 end)
 
--- ================== MAGNET ==================
+-- ================== 🎯 AUTO FARM + QUEST ==================
+-- นี่คือส่วนสำคัญ! ลำดับการทำงาน:
+-- 1. เช็คว่ามีเควสต์ไหม → ไม่มี = รับเควสต์
+-- 2. หามอนในเควสต์
+-- 3. Teleport ไปตี
+-- 4. ครบ → ส่งเควสต์ → รับใหม่
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if CFG.AutoFarm then
+            pcall(function()
+                local h = HRP()
+                if not h then return end
+
+                -- STEP 1: รับเควสต์ถ้ายังไม่มี
+                if CFG.AutoQuest and not HasQuest() then
+                    GetQuest()
+                    task.wait(1)
+                    return
+                end
+
+                -- STEP 2: หามอนในเควสต์
+                local en = workspace:FindFirstChild("Enemies")
+                if not en then return end
+
+                local questName = currentQuest and currentQuest.Name or nil
+                local closest, closestDist = nil, math.huge
+
+                for _, m in pairs(en:GetChildren()) do
+                    local hrp = m:FindFirstChild("HumanoidRootPart")
+                    local hum = m:FindFirstChild("Humanoid")
+                    if hrp and hum and hum.Health > 0 then
+                        -- เช็คว่าตรงกับเควสต์ไหม
+                        local isQuestMob = true
+                        if questName then
+                            isQuestMob = (m.Name == questName) 
+                        end
+                        
+                        if isQuestMob then
+                            local d = (hrp.Position - h.Position).Magnitude
+                            if d < closestDist then
+                                closest = m
+                                closestDist = d
+                            end
+                        end
+                    end
+                end
+
+                -- ถ้าไม่เจอมอนในเควสต์ → ใช้ตัวแรกที่เจอ
+                if not closest then
+                    for _, m in pairs(en:GetChildren()) do
+                        local hrp = m:FindFirstChild("HumanoidRootPart")
+                        local hum = m:FindFirstChild("Humanoid")
+                        if hrp and hum and hum.Health > 0 then
+                            local d = (hrp.Position - h.Position).Magnitude
+                            if d < closestDist then
+                                closest = m
+                                closestDist = d
+                            end
+                        end
+                    end
+                end
+
+                -- STEP 3: Teleport ไปตี
+                if closest then
+                    local hrp = closest:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local targetCF = hrp.CFrame * CFrame.new(0, CFG.Distance, 0)
+                        h.CFrame = targetCF
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ================== BRING MOBS (ตัวเลือกเสริม) ==================
 task.spawn(function()
     while task.wait(0.1) do
-        if CFG.Magnet then
+        if CFG.BringMobs then
             pcall(function()
                 local en = workspace:FindFirstChild("Enemies")
                 local h = HRP()
@@ -263,48 +492,8 @@ task.spawn(function()
                     if hrp and hum and hum.Health > 0 
                        and (hrp.Position - h.Position).Magnitude <= 350 then
                         hrp.CFrame = h.CFrame * CFrame.new(0, 30, 0)
-                        hrp.Size = Vector3.new(50, 50, 50)
+                        hrp.Size = Vector3.new(30, 30, 30)
                         hum.WalkSpeed = 0
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- ================== AUTO FARM ==================
-task.spawn(function()
-    while task.wait(0.2) do
-        if CFG.AutoFarm then
-            pcall(function()
-                local en = workspace:FindFirstChild("Enemies")
-                local h = HRP()
-                if not en or not h then return end
-                
-                -- หามอนที่ใกล้ที่สุด
-                local closest, closestDist = nil, math.huge
-                for _, m in pairs(en:GetChildren()) do
-                    local hrp = m:FindFirstChild("HumanoidRootPart")
-                    local hum = m:FindFirstChild("Humanoid")
-                    if hrp and hum and hum.Health > 0 then
-                        local d = (hrp.Position - h.Position).Magnitude
-                        if d < closestDist then
-                            closest = m
-                            closestDist = d
-                        end
-                    end
-                end
-                
-                if closest then
-                    local hrp = closest:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local targetCF = hrp.CFrame * CFrame.new(0, CFG.Distance, 0)
-                        if closestDist > 20 then
-                            -- Teleport ไปหามอน
-                            h.CFrame = targetCF
-                        else
-                            h.CFrame = targetCF
-                        end
                     end
                 end
             end)
@@ -323,13 +512,11 @@ if old then old:Destroy() end
 local oldBlur = Lighting:FindFirstChild("RbotBlur")
 if oldBlur then oldBlur:Destroy() end
 
--- Blur
 local Blur = Instance.new("BlurEffect")
 Blur.Name = "RbotBlur"
 Blur.Size = 0
 Blur.Parent = Lighting
 
--- ScreenGui
 local SG = Instance.new("ScreenGui")
 SG.Name = "RbotPremium"
 SG.Parent = game.CoreGui
@@ -338,7 +525,7 @@ SG.IgnoreGuiInset = true
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SG.DisplayOrder = 999
 
--- ============ MAIN FRAME ============
+-- ============ MAIN ============
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Size = UDim2.new(0, 0, 0, 0)
@@ -371,7 +558,7 @@ Glow.SliceCenter = Rect.new(20, 20, 280, 280)
 Glow.ZIndex = 0
 Glow.Parent = Main
 
--- ============ 🔓 TOGGLE SYSTEM ============
+-- ============ TOGGLE ============
 local uiOpen = true
 local FloatingBtn
 local OPEN_SIZE = UDim2.new(0, 740, 0, 500)
@@ -409,7 +596,6 @@ local function SetUIVisible(visible)
     end
 end
 
--- Open Animation
 TS:Create(Main, TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
     Size = OPEN_SIZE
 }):Play()
@@ -467,7 +653,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 300, 0, 25)
 Title.Position = UDim2.new(0, 72, 0, 12)
 Title.BackgroundTransparency = 1
-Title.Text = "RBOT • PREMIUM v3.2"
+Title.Text = "RBOT • PREMIUM v3.3"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 18
@@ -478,7 +664,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(0, 300, 0, 18)
 SubTitle.Position = UDim2.new(0, 72, 0, 35)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Blox Fruits | " .. WORLD[game.PlaceId] .. " | " .. LP.Name
+SubTitle.Text = "Auto Quest + Attack | " .. WORLD[game.PlaceId]
 SubTitle.TextColor3 = Color3.fromRGB(160, 150, 180)
 SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.TextSize = 11
@@ -496,27 +682,31 @@ LevelTxt.TextSize = 12
 LevelTxt.TextXAlignment = Enum.TextXAlignment.Right
 LevelTxt.Parent = Header
 
-local BeliTxt = Instance.new("TextLabel")
-BeliTxt.Size = UDim2.new(0, 150, 0, 18)
-BeliTxt.Position = UDim2.new(1, -250, 0, 35)
-BeliTxt.BackgroundTransparency = 1
-BeliTxt.Text = "💰 " .. FormatNum(SafeGet(LP.Data, "Beli"))
-BeliTxt.TextColor3 = Color3.fromRGB(160, 150, 180)
-BeliTxt.Font = Enum.Font.Gotham
-BeliTxt.TextSize = 10
-BeliTxt.TextXAlignment = Enum.TextXAlignment.Right
-BeliTxt.Parent = Header
+local QuestTxt = Instance.new("TextLabel")
+QuestTxt.Size = UDim2.new(0, 150, 0, 18)
+QuestTxt.Position = UDim2.new(1, -250, 0, 35)
+QuestTxt.BackgroundTransparency = 1
+QuestTxt.Text = "📜 รอเควสต์..."
+QuestTxt.TextColor3 = Color3.fromRGB(160, 150, 180)
+QuestTxt.Font = Enum.Font.Gotham
+QuestTxt.TextSize = 10
+QuestTxt.TextXAlignment = Enum.TextXAlignment.Right
+QuestTxt.Parent = Header
 
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
             LevelTxt.Text = "LV." .. SafeGet(LP.Data, "Level")
-            BeliTxt.Text = "💰 " .. FormatNum(SafeGet(LP.Data, "Beli"))
+            if currentQuest then
+                QuestTxt.Text = "📜 " .. currentQuest.Name .. " Lv." .. currentQuest.Level
+            else
+                QuestTxt.Text = "📜 ไม่มีเควสต์"
+            end
         end)
     end
 end)
 
--- Minimize
+-- Min Button
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 36, 0, 36)
 MinBtn.Position = UDim2.new(1, -95, 0.5, -18)
@@ -532,18 +722,6 @@ local MinC = Instance.new("UICorner")
 MinC.CornerRadius = UDim.new(1, 0)
 MinC.Parent = MinBtn
 
-MinBtn.MouseEnter:Connect(function()
-    TS:Create(MinBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency = 0.6,
-        BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    }):Play()
-end)
-MinBtn.MouseLeave:Connect(function()
-    TS:Create(MinBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency = 0.9,
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    }):Play()
-end)
 MinBtn.MouseButton1Click:Connect(function()
     SetUIVisible(false)
 end)
@@ -564,18 +742,6 @@ local CBC = Instance.new("UICorner")
 CBC.CornerRadius = UDim.new(1, 0)
 CBC.Parent = CloseBtn
 
-CloseBtn.MouseEnter:Connect(function()
-    TS:Create(CloseBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency = 0.6,
-        BackgroundColor3 = Color3.fromRGB(255, 60, 80)
-    }):Play()
-end)
-CloseBtn.MouseLeave:Connect(function()
-    TS:Create(CloseBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency = 0.9,
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    }):Play()
-end)
 CloseBtn.MouseButton1Click:Connect(function()
     SetUIVisible(false)
 end)
@@ -648,7 +814,7 @@ SLLay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 20)
 end)
 
--- Drag Main
+-- Drag
 local dragging, dragStart, startPos
 Header.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 
@@ -708,14 +874,6 @@ local function CreateTab(name, icon)
     IndC.CornerRadius = UDim.new(1, 0)
     IndC.Parent = Ind
 
-    local IndGrad = Instance.new("UIGradient")
-    IndGrad.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 100))
-    }
-    IndGrad.Rotation = 90
-    IndGrad.Parent = Ind
-
     local page = Instance.new("Frame")
     page.Size = UDim2.new(1, 0, 0, 0)
     page.AutomaticSize = Enum.AutomaticSize.Y
@@ -729,21 +887,6 @@ local function CreateTab(name, icon)
     pLay.Padding = UDim.new(0, 8)
 
     table.insert(Tabs, {Btn = Btn, Page = page, Ind = Ind})
-
-    Btn.MouseEnter:Connect(function()
-        if page.Visible then return end
-        TS:Create(Btn, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.3, 
-            TextColor3 = Color3.fromRGB(220, 210, 255)
-        }):Play()
-    end)
-    Btn.MouseLeave:Connect(function()
-        if page.Visible then return end
-        TS:Create(Btn, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.5, 
-            TextColor3 = Color3.fromRGB(160, 150, 190)
-        }):Play()
-    end)
 
     Btn.MouseButton1Click:Connect(function()
         for _, t in pairs(Tabs) do
@@ -908,12 +1051,6 @@ local function Slider(parent, name, min, max, key)
     c.CornerRadius = UDim.new(0, 10)
     c.Parent = F
 
-    local strk = Instance.new("UIStroke")
-    strk.Color = Color3.fromRGB(60, 50, 90)
-    strk.Thickness = 1
-    strk.Transparency = 0.6
-    strk.Parent = F
-
     local L = Instance.new("TextLabel")
     L.Size = UDim2.new(1, -30, 0, 22)
     L.Position = UDim2.new(0, 16, 0, 8)
@@ -947,13 +1084,6 @@ local function Slider(parent, name, min, max, key)
     local fc = Instance.new("UICorner")
     fc.CornerRadius = UDim.new(1, 0)
     fc.Parent = Fill
-
-    local FG = Instance.new("UIGradient")
-    FG.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 100))
-    }
-    FG.Parent = Fill
 
     local Dot = Instance.new("Frame")
     Dot.Size = UDim2.new(0, 16, 0, 16)
@@ -1015,12 +1145,6 @@ local function Button(parent, name, desc, callback)
     c.CornerRadius = UDim.new(0, 10)
     c.Parent = F
 
-    local strk = Instance.new("UIStroke")
-    strk.Color = Color3.fromRGB(60, 50, 90)
-    strk.Thickness = 1
-    strk.Transparency = 0.6
-    strk.Parent = F
-
     local L = Instance.new("TextLabel")
     L.Size = UDim2.new(1, -30, 0, 22)
     L.Position = UDim2.new(0, 16, 0, 8)
@@ -1049,18 +1173,6 @@ local function Button(parent, name, desc, callback)
     Btn.Text = ""
     Btn.Parent = F
 
-    Btn.MouseEnter:Connect(function()
-        TS:Create(F, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.05, 
-            BackgroundColor3 = Color3.fromRGB(45, 38, 65)
-        }):Play()
-    end)
-    Btn.MouseLeave:Connect(function()
-        TS:Create(F, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.2, 
-            BackgroundColor3 = Color3.fromRGB(28, 26, 38)
-        }):Play()
-    end)
     Btn.MouseButton1Click:Connect(function()
         pcall(callback)
     end)
@@ -1074,22 +1186,30 @@ local MiscTab = CreateTab("อื่น ๆ", "⚙️")
 local SetTab = CreateTab("ตั้งค่า", "🔧")
 
 Section(HomeTab, "ข้อมูล")
-Button(HomeTab, "🤖 Rbot Premium v3.2", "Fast Click + Logo Toggle", function() end)
-Button(HomeTab, "📊 สถิติปัจจุบัน", "LV." .. SafeGet(LP.Data, "Level") .. " | 💰 " .. FormatNum(SafeGet(LP.Data, "Beli")), function() end)
+Button(HomeTab, "🤖 Rbot v3.3", "Auto Quest + Attack", function() end)
+Button(HomeTab, "📜 เควสต์ปัจจุบัน", "ดูว่าได้รับเควสต์อะไรอยู่", function() 
+    if currentQuest then
+        print("เควสต์: " .. currentQuest.Name .. " Lv." .. currentQuest.Level)
+    else
+        print("ยังไม่มีเควสต์")
+    end
+end)
 Section(HomeTab, "วิธีใช้")
-Button(HomeTab, "⌨️ ปุ่มลัด", "Right Ctrl = เปิด/ปิด UI", function() end)
-Button(HomeTab, "🟣 โลโก้ R", "คลิกโลโก้ R เพื่อเปิด UI", function() end)
+Button(HomeTab, "⌨️ Right Ctrl", "เปิด/ปิด UI", function() end)
+Button(HomeTab, "🟣 โลโก้ R", "คลิกเพื่อเปิด UI", function() end)
 
-Section(FarmTab, "ฟาร์มหลัก")
-Toggle(FarmTab, "Auto Farm Level", "ฟาร์มมอนอัตโนมัติ (เร็ว)", "AutoFarm")
-Toggle(FarmTab, "Auto Click", "คลิกอัตโนมัติแบบ Fast", "AutoClick")
-Toggle(FarmTab, "Magnet Token", "ดึงมอนเข้าหาตัว", "Magnet")
+Section(FarmTab, "🎯 Auto Farm System")
+Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมัติ (ต้องเปิด!)", "AutoQuest")
+Toggle(FarmTab, "Auto Farm", "ฟาร์ม + ตีมอน + ส่งเควสต์", "AutoFarm")
+Toggle(FarmTab, "Auto Click", "คลิกอัตโนมัติ", "AutoClick")
+Toggle(FarmTab, "Bring Mobs", "ดึงมอนเข้าหาตัว (เร็ว)", "BringMobs")
+Toggle(FarmTab, "Magnet Token", "ดึงทุกอย่างเข้าหา", "Magnet")
 Slider(FarmTab, "Farm Distance", 5, 100, "Distance")
 
 Section(SkillTab, "สกิล")
-Toggle(SkillTab, "Auto Skill", "กด Z X C V F E Q R อัตโนมัติ", "AutoSkill")
+Toggle(SkillTab, "Auto Skill", "กด Z X C V F E Q R", "AutoSkill")
 Toggle(SkillTab, "Auto Haki", "ใช้ Buso อัตโนมัติ", "AutoHaki")
-Toggle(SkillTab, "Fast Attack", "ตีเร็วขึ้น (Bypass Cooldown)", "FastAttack")
+Toggle(SkillTab, "Fast Attack", "ตีเร็วขึ้น", "FastAttack")
 
 Section(MiscTab, "ระบบ")
 Toggle(MiscTab, "No Clip", "ทะลุกำแพง", "NoClip")
@@ -1098,18 +1218,17 @@ Section(SetTab, "ตัวละคร")
 Slider(SetTab, "WalkSpeed", 16, 500, "WalkSpeed")
 Slider(SetTab, "JumpPower", 50, 500, "JumpPower")
 Section(SetTab, "ระบบ")
-Button(SetTab, "🔄 Rejoin Server", "กลับเซิร์ฟเวอร์เดิม", function()
+Button(SetTab, "🔄 Rejoin", "กลับเซิร์ฟเวอร์", function()
     TPS:Teleport(game.PlaceId, LP)
 end)
-Button(SetTab, "❌ ปิด UI", "ปิดหน้าต่าง UI", function()
+Button(SetTab, "❌ ปิด UI", "ปิดหน้าต่าง", function()
     SetUIVisible(false)
 end)
 
--- ================== 🟣 LOGO FLOATING BUTTON ==================
+-- ================== LOGO FLOATING BUTTON ==================
 FloatingBtn = Instance.new("TextButton")
-FloatingBtn.Name = "RbotLogo"
 FloatingBtn.Size = UDim2.new(0, 56, 0, 56)
-FloatingBtn.Position = UDim2.new(0, -60, 0.5, -28)  -- เริ่มซ่อน
+FloatingBtn.Position = UDim2.new(0, -60, 0.5, -28)
 FloatingBtn.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
 FloatingBtn.BorderSizePixel = 0
 FloatingBtn.Text = "R"
@@ -1138,30 +1257,16 @@ FBStroke.Thickness = 2
 FBStroke.Transparency = 0.5
 FBStroke.Parent = FloatingBtn
 
--- Glow effect
-local FBGlow = Instance.new("ImageLabel")
-FBGlow.Size = UDim2.new(1, 30, 1, 30)
-FBGlow.Position = UDim2.new(0, -15, 0, -15)
-FBGlow.BackgroundTransparency = 1
-FBGlow.Image = "rbxassetid://4996891970"
-FBGlow.ImageColor3 = Color3.fromRGB(138, 43, 226)
-FBGlow.ImageTransparency = 0.4
-FBGlow.ScaleType = Enum.ScaleType.Slice
-FBGlow.SliceCenter = Rect.new(20, 20, 280, 280)
-FBGlow.ZIndex = -1
-FBGlow.Parent = FloatingBtn
-
--- Pulse animation ตอน UI ปิด
 task.spawn(function()
     while FloatingBtn and FloatingBtn.Parent do
         task.wait(1.5)
         if not uiOpen then
-            TS:Create(FloatingBtn, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            TS:Create(FloatingBtn, TweenInfo.new(0.5), {
                 Size = UDim2.new(0, 64, 0, 64)
             }):Play()
             task.wait(0.5)
             if FloatingBtn then
-                TS:Create(FloatingBtn, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                TS:Create(FloatingBtn, TweenInfo.new(0.5), {
                     Size = UDim2.new(0, 56, 0, 56)
                 }):Play()
             end
@@ -1169,7 +1274,6 @@ task.spawn(function()
     end
 end)
 
--- Drag Logo
 local fbDrag, fbStart, fbStartPos
 FloatingBtn.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 
@@ -1195,30 +1299,22 @@ UIS.InputChanged:Connect(function(i)
     end
 end)
 
--- คลิกโลโก้ = เปิด UI
 FloatingBtn.MouseButton1Click:Connect(function()
-    if not uiOpen then
-        SetUIVisible(true)
-    else
-        SetUIVisible(false)
-    end
+    SetUIVisible(not uiOpen)
 end)
 
--- ================== ⌨️ KEYBIND ==================
+-- ================== KEYBIND ==================
 UIS.InputBegan:Connect(function(i, g)
     if g then return end
     if i.KeyCode == Enum.KeyCode.RightControl then
         SetUIVisible(not uiOpen)
     end
-    if i.KeyCode == Enum.KeyCode.RightShift then
-        if uiOpen then SetUIVisible(false) end
-    end
 end)
 
 print("═══════════════════════════════════════")
-print("✅ Rbot Premium v3.2 พร้อมใช้งาน!")
-print("🎨 Glassmorphism UI | " .. WORLD[game.PlaceId])
-print("⚡ Fast Click: เปิดอัตโนมัติ")
+print("✅ Rbot v3.3 พร้อมใช้งาน!")
+print("📜 Auto Quest: เปิดอัตโนมัติ")
+print("🌾 Auto Farm: เปิดในเมนู")
 print("⌨️ Right Ctrl = เปิด/ปิด UI")
 print("🟣 คลิกโลโก้ R = เปิด/ปิด UI")
 print("═══════════════════════════════════════")
