@@ -1,6 +1,7 @@
 --[[
-    🤖 Rbot Premium v3.4
-    ✅ Bring Mobs + Fast Click + Auto Island
+    🤖 Rbot Premium v4.0 - ULTIMATE EDITION
+    🎨 Neon Glassmorphism UI 2026
+    ✅ Auto Quest + Auto Farm + Fast Click + Bring Mobs + Auto Island
 ]]
 
 -- ================== SERVICES ==================
@@ -15,7 +16,7 @@ local TPS = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-print("=== Rbot v3.4 Loading ===")
+print("=== Rbot v4.0 ULTIMATE Loading ===")
 
 -- ================== CHECK ==================
 local WORLD = {
@@ -27,35 +28,23 @@ if not WORLD[game.PlaceId] then
     warn("⚠️ ใช้กับ Blox Fruits เท่านั้น!")
     return
 end
-print("🎮 Game: " .. WORLD[game.PlaceId])
 
 -- ================== CONFIG ==================
 local CFG = {
-    AutoFarm = false,
-    AutoQuest = true,
-    Magnet = false,
-    AutoSkill = true,
-    AutoHaki = true,
-    FastAttack = true,
-    AutoClick = true,
-    NoClip = false,
-    BringMobs = true,       -- ดึงมอนมาหา (default เปิด)
-    AutoIsland = true,      -- ย้ายเกาะอัตโนมัติ
-    WalkSpeed = 16,
-    JumpPower = 50,
-    Distance = 30,
-    BringDistance = 25,     -- ระยะที่ดึงมอนมา
+    AutoFarm = false, AutoQuest = true, Magnet = false,
+    AutoSkill = true, AutoHaki = true, FastAttack = true,
+    AutoClick = true, NoClip = false, BringMobs = true,
+    AutoIsland = true, AutoEquip = true,
+    WalkSpeed = 16, JumpPower = 50, Distance = 30, BringDistance = 25,
 }
 
 -- ================== HELPERS ==================
 local cachedChar, cachedHRP, cachedHum
-
 local function OnChar(c)
     cachedChar = c
     cachedHRP = c:WaitForChild("HumanoidRootPart", 10)
     cachedHum = c:WaitForChild("Humanoid", 10)
 end
-
 if LP.Character then OnChar(LP.Character) end
 LP.CharacterAdded:Connect(OnChar)
 
@@ -75,174 +64,98 @@ local function FormatNum(n)
     else return tostring(math.floor(n)) end
 end
 
--- ================== 🌍 ISLAND DATABASE ==================
--- เกาะทั้งหมดพร้อม CFrame หลัก
+-- ================== ISLANDS ==================
 local ISLANDS = {
-    -- Sea 1
-    ["Starter Island"]   = {Level = 1,    CFrame = CFrame.new(1040, 16, 1540)},
-    ["Jungle"]           = {Level = 15,   CFrame = CFrame.new(-1626, 35, 45)},
-    ["Pirate Village"]   = {Level = 30,   CFrame = CFrame.new(-1160, 4, 3850)},
-    ["Desert"]           = {Level = 60,   CFrame = CFrame.new(970, 100, 4450)},
-    ["Frozen Village"]   = {Level = 90,   CFrame = CFrame.new(1150, 25, -1000)},
-    ["Marine Ford"]      = {Level = 120,  CFrame = CFrame.new(-4750, 25, 4400)},
-    ["Skylands"]         = {Level = 150,  CFrame = CFrame.new(-4850, 720, -2650)},
-    ["Colosseum"]        = {Level = 200,  CFrame = CFrame.new(-1850, 25, 1450)},
-    ["Underwater City"]  = {Level = 250,  CFrame = CFrame.new(60500, 700, 1550)},
-    ["Fountain City"]    = {Level = 300,  CFrame = CFrame.new(5250, 30, 4000)},
-    ["Kingdom of Rose"]  = {Level = 400,  CFrame = CFrame.new(-390, 30, 5600)},
-    ["Green Zone"]       = {Level = 500,  CFrame = CFrame.new(-350, 30, 8200)},
-    ["Graveyard"]        = {Level = 600,  CFrame = CFrame.new(6500, 25, -6000)},
-    ["Snow Mountain"]    = {Level = 700,  CFrame = CFrame.new(1350, 40, -7000)},
-    ["Hot and Cold"]     = {Level = 800,  CFrame = CFrame.new(-5700, 30, -6000)},
-    ["Haunted Castle"]   = {Level = 900,  CFrame = CFrame.new(-9500, 145, 5800)},
-    ["Cursed Ship"]      = {Level = 1000, CFrame = CFrame.new(920, 125, 32800)},
-    ["Forgotten Island"] = {Level = 1200, CFrame = CFrame.new(-3050, 240, -10000)},
-    -- Sea 2
-    ["Kingdom of Rose S2"] = {Level = 700, CFrame = CFrame.new(-390, 30, 5600)},
-    ["Cursed Ship S2"]     = {Level = 1000,CFrame = CFrame.new(920, 125, 32800)},
-    ["Forgotten Island S2"]= {Level = 1200,CFrame = CFrame.new(-3050, 240, -10000)},
-    ["Ice Castle"]         = {Level = 1350,CFrame = CFrame.new(5450, 60, -2500)},
-    ["Forgotten Island S2b"]={Level = 1425,CFrame = CFrame.new(-3050, 240, -10000)},
-    ["Haunted Castle S2"]  = {Level = 1500,CFrame = CFrame.new(-9500, 145, 5800)},
-    ["Cursed Ship S2b"]    = {Level = 1625,CFrame = CFrame.new(920, 125, 32800)},
-    ["Forgotten Island S2c"]={Level = 1700,CFrame = CFrame.new(-3050, 240, -10000)},
-    -- Sea 3
-    ["Port Town"]          = {Level = 1500,CFrame = CFrame.new(-280, 6, 4700)},
-    ["Hydra Island"]       = {Level = 1650,CFrame = CFrame.new(5550, 200, -5000)},
-    ["Great Tree"]         = {Level = 1800,CFrame = CFrame.new(2100, 450, -7500)},
-    ["Floating Turtle"]    = {Level = 2000,CFrame = CFrame.new(-9500, 400, -9500)},
-    ["Haunted Castle S3"]  = {Level = 2200,CFrame = CFrame.new(-9500, 145, 5800)},
-    ["Snow Mountain S3"]   = {Level = 2350,CFrame = CFrame.new(1350, 40, -7000)},
-    ["Fountain City S3"]   = {Level = 2500,CFrame = CFrame.new(5250, 30, 4000)},
-    ["Castle on the Sea"]  = {Level = 2750,CFrame = CFrame.new(-5000, 500, -3000)},
-    ["Pirate Village S3"]  = {Level = 2900,CFrame = CFrame.new(-1160, 4, 3850)},
-    ["Hydra Island S3"]    = {Level = 3050,CFrame = CFrame.new(5550, 200, -5000)},
-    ["Great Tree S3"]      = {Level = 3200,CFrame = CFrame.new(2100, 450, -7500)},
-    ["Floating Turtle S3"] = {Level = 3350,CFrame = CFrame.new(-9500, 400, -9500)},
-    ["Haunted Castle S3b"] = {Level = 3500,CFrame = CFrame.new(-9500, 145, 5800)},
+    ["Starter Island"]={Level=1,CFrame=CFrame.new(1040,16,1540)},
+    ["Jungle"]={Level=15,CFrame=CFrame.new(-1626,35,45)},
+    ["Pirate Village"]={Level=30,CFrame=CFrame.new(-1160,4,3850)},
+    ["Desert"]={Level=60,CFrame=CFrame.new(970,100,4450)},
+    ["Frozen Village"]={Level=90,CFrame=CFrame.new(1150,25,-1000)},
+    ["Marine Ford"]={Level=120,CFrame=CFrame.new(-4750,25,4400)},
+    ["Skylands"]={Level=150,CFrame=CFrame.new(-4850,720,-2650)},
+    ["Colosseum"]={Level=200,CFrame=CFrame.new(-1850,25,1450)},
+    ["Underwater City"]={Level=250,CFrame=CFrame.new(60500,700,1550)},
+    ["Fountain City"]={Level=300,CFrame=CFrame.new(5250,30,4000)},
+    ["Kingdom of Rose"]={Level=400,CFrame=CFrame.new(-390,30,5600)},
+    ["Green Zone"]={Level=500,CFrame=CFrame.new(-350,30,8200)},
+    ["Graveyard"]={Level=600,CFrame=CFrame.new(6500,25,-6000)},
+    ["Snow Mountain"]={Level=700,CFrame=CFrame.new(1350,40,-7000)},
+    ["Hot and Cold"]={Level=800,CFrame=CFrame.new(-5700,30,-6000)},
+    ["Haunted Castle"]={Level=900,CFrame=CFrame.new(-9500,145,5800)},
+    ["Cursed Ship"]={Level=1000,CFrame=CFrame.new(920,125,32800)},
+    ["Forgotten Island"]={Level=1200,CFrame=CFrame.new(-3050,240,-10000)},
+    ["Ice Castle"]={Level=1350,CFrame=CFrame.new(5450,60,-2500)},
+    ["Port Town"]={Level=1500,CFrame=CFrame.new(-280,6,4700)},
+    ["Hydra Island"]={Level=1650,CFrame=CFrame.new(5550,200,-5000)},
+    ["Great Tree"]={Level=1800,CFrame=CFrame.new(2100,450,-7500)},
+    ["Floating Turtle"]={Level=2000,CFrame=CFrame.new(-9500,400,-9500)},
+    ["Castle on the Sea"]={Level=2750,CFrame=CFrame.new(-5000,500,-3000)},
 }
 
--- ================== QUEST DATABASE ==================
+-- ================== QUESTS ==================
 local QUESTS = {
-    -- Sea 1
-    {Name="Bandit", Level=1, Island="Starter Island"},
-    {Name="Monkey", Level=1, Island="Starter Island"},
-    {Name="Blade Bandit", Level=15, Island="Jungle"},
-    {Name="Jungle Pirate", Level=20, Island="Jungle"},
-    {Name="Desert Bandit", Level=30, Island="Desert"},
-    {Name="Desert Officer", Level=40, Island="Desert"},
-    {Name="Snow Bandit", Level=50, Island="Frozen Village"},
-    {Name="Snowman", Level=60, Island="Frozen Village"},
-    {Name="Frost Bandit", Level=75, Island="Marine Ford"},
-    {Name="Marine", Level=85, Island="Marine Ford"},
-    {Name="Sky Bandit", Level=90, Island="Skylands"},
-    {Name="Dark Master", Level=100, Island="Skylands"},
-    {Name="Fighter", Level=120, Island="Colosseum"},
-    {Name="Fishman", Level=150, Island="Underwater City"},
-    {Name="Magma Ninja", Level=175, Island="Fountain City"},
-    {Name="Pirate Boss", Level=200, Island="Fountain City"},
-    {Name="Snow Trooper", Level=250, Island="Kingdom of Rose"},
-    {Name="Winter Warrior", Level=300, Island="Kingdom of Rose"},
-    {Name="Lab Subordinate", Level=350, Island="Green Zone"},
-    {Name="Horned Warrior", Level=400, Island="Green Zone"},
-    {Name="Military Soldier", Level=450, Island="Graveyard"},
-    {Name="Military Spy", Level=500, Island="Graveyard"},
-    {Name="Reborn Skeleton", Level=550, Island="Graveyard"},
-    {Name="Living Zombie", Level=600, Island="Graveyard"},
-    {Name="Demonic Soul", Level=650, Island="Graveyard"},
-    {Name="Possessed Mummy", Level=700, Island="Graveyard"},
-    {Name="Snow Lurker", Level=725, Island="Snow Mountain"},
-    {Name="Yeti", Level=750, Island="Snow Mountain"},
-    {Name="Pirate Millionaire", Level=775, Island="Hot and Cold"},
-    {Name="Pistol Billionaire", Level=800, Island="Hot and Cold"},
-    {Name="Dragon Crew Archer", Level=850, Island="Hot and Cold"},
-    {Name="Dragon Crew Warrior", Level=875, Island="Hot and Cold"},
-    {Name="Amazon", Level=900, Island="Haunted Castle"},
-    {Name="Island Empress", Level=925, Island="Haunted Castle"},
-    {Name="Hydra Enforcer", Level=950, Island="Haunted Castle"},
-    {Name="Venomous Assailant", Level=975, Island="Haunted Castle"},
-    {Name="Reborn Skeleton", Level=1000, Island="Cursed Ship"},
-    {Name="Living Zombie", Level=1025, Island="Cursed Ship"},
-    {Name="Demonic Soul", Level=1050, Island="Cursed Ship"},
-    {Name="Possessed Mummy", Level=1075, Island="Cursed Ship"},
-    {Name="Snow Lurker", Level=1100, Island="Cursed Ship"},
-    {Name="Ice Jailer", Level=1125, Island="Cursed Ship"},
-    {Name="Cursed Pirate", Level=1150, Island="Cursed Ship"},
-    {Name="Cursed Captain", Level=1175, Island="Cursed Ship"},
-    {Name="Cursed Skeleton", Level=1200, Island="Cursed Ship"},
-    {Name="Sea Soldier", Level=1250, Island="Forgotten Island"},
-    {Name="Water Fighter", Level=1300, Island="Forgotten Island"},
-    {Name="Pirate Millionaire", Level=1350, Island="Forgotten Island"},
-    {Name="Forest Pirate", Level=1375, Island="Forgotten Island"},
-    {Name="Mythological Pirate", Level=1425, Island="Forgotten Island"},
-    {Name="Jungle Pirate", Level=1475, Island="Forgotten Island"},
-    {Name="Musketeer Pirate", Level=1500, Island="Forgotten Island"},
-    -- Sea 2
-    {Name="Raider", Level=700, Island="Kingdom of Rose S2"},
-    {Name="Mercenary", Level=725, Island="Kingdom of Rose S2"},
-    {Name="Swan Pirate", Level=775, Island="Kingdom of Rose S2"},
-    {Name="Factory Staff", Level=800, Island="Kingdom of Rose S2"},
-    {Name="Marine Captain", Level=850, Island="Kingdom of Rose S2"},
-    {Name="Zombie", Level=900, Island="Kingdom of Rose S2"},
-    {Name="Snow Lurker", Level=1100, Island="Snow Mountain"},
-    {Name="Snow Trooper", Level=1150, Island="Snow Mountain"},
-    {Name="Winter Warrior", Level=1200, Island="Snow Mountain"},
-    {Name="Snow Bandit", Level=1250, Island="Snow Mountain"},
-    {Name="Reborn Skeleton", Level=1300, Island="Cursed Ship S2"},
-    {Name="Living Zombie", Level=1350, Island="Cursed Ship S2"},
-    {Name="Demonic Soul", Level=1400, Island="Cursed Ship S2"},
-    {Name="Possessed Mummy", Level=1450, Island="Cursed Ship S2"},
-    {Name="Snow Lurker", Level=1500, Island="Cursed Ship S2"},
-    {Name="Ice Jailer", Level=1550, Island="Cursed Ship S2"},
-    {Name="Cursed Pirate", Level=1600, Island="Cursed Ship S2"},
-    {Name="Cursed Captain", Level=1650, Island="Cursed Ship S2"},
-    {Name="Cursed Skeleton", Level=1700, Island="Cursed Ship S2"},
-    {Name="Sea Soldier", Level=1750, Island="Forgotten Island S2"},
-    {Name="Water Fighter", Level=1800, Island="Forgotten Island S2"},
-    {Name="Pirate Millionaire", Level=1850, Island="Forgotten Island S2"},
-    {Name="Forest Pirate", Level=1900, Island="Forgotten Island S2"},
-    {Name="Mythological Pirate", Level=1950, Island="Forgotten Island S2"},
-    {Name="Jungle Pirate", Level=2000, Island="Forgotten Island S2"},
-    {Name="Musketeer Pirate", Level=2050, Island="Forgotten Island S2"},
-    {Name="Reborn Skeleton", Level=2100, Island="Haunted Castle S2"},
-    {Name="Living Zombie", Level=2150, Island="Haunted Castle S2"},
-    {Name="Demonic Soul", Level=2200, Island="Haunted Castle S2"},
-    {Name="Possessed Mummy", Level=2250, Island="Haunted Castle S2"},
-    {Name="Snow Lurker", Level=2300, Island="Haunted Castle S2"},
-    {Name="Ice Jailer", Level=2350, Island="Haunted Castle S2"},
-    {Name="Cursed Pirate", Level=2400, Island="Haunted Castle S2"},
-    {Name="Cursed Captain", Level=2450, Island="Haunted Castle S2"},
-    -- Sea 3
-    {Name="Pirate Luffy", Level=1500, Island="Port Town"},
-    {Name="Pirate Crew Member", Level=1525, Island="Port Town"},
-    {Name="Marine Recruit", Level=1550, Island="Port Town"},
-    {Name="Marine Grunt", Level=1575, Island="Port Town"},
-    {Name="Fishman Raider", Level=1625, Island="Hydra Island"},
-    {Name="Fishman Captain", Level=1675, Island="Hydra Island"},
-    {Name="Forest Pirate", Level=1725, Island="Hydra Island"},
-    {Name="Mythological Pirate", Level=1775, Island="Hydra Island"},
-    {Name="Jungle Pirate", Level=1825, Island="Hydra Island"},
-    {Name="Musketeer Pirate", Level=1875, Island="Hydra Island"},
-    {Name="Reborn Skeleton", Level=1925, Island="Haunted Castle S3"},
-    {Name="Living Zombie", Level=1975, Island="Haunted Castle S3"},
-    {Name="Demonic Soul", Level=2025, Island="Haunted Castle S3"},
-    {Name="Possessed Mummy", Level=2075, Island="Haunted Castle S3"},
-    {Name="Snow Lurker", Level=2125, Island="Snow Mountain S3"},
-    {Name="Ice Jailer", Level=2175, Island="Snow Mountain S3"},
-    {Name="Cursed Pirate", Level=2225, Island="Snow Mountain S3"},
-    {Name="Cursed Captain", Level=2275, Island="Snow Mountain S3"},
-    {Name="Cursed Skeleton", Level=2325, Island="Snow Mountain S3"},
-    {Name="Sea Soldier", Level=2375, Island="Floating Turtle S3"},
-    {Name="Water Fighter", Level=2425, Island="Floating Turtle S3"},
-    {Name="Pirate Millionaire", Level=2475, Island="Floating Turtle S3"},
-    {Name="Forest Pirate", Level=2525, Island="Floating Turtle S3"},
-    {Name="Mythological Pirate", Level=2575, Island="Floating Turtle S3"},
-    {Name="Jungle Pirate", Level=2625, Island="Floating Turtle S3"},
-    {Name="Musketeer Pirate", Level=2675, Island="Floating Turtle S3"},
-    {Name="Reborn Skeleton", Level=2725, Island="Haunted Castle S3b"},
-    {Name="Living Zombie", Level=2775, Island="Haunted Castle S3b"},
-    {Name="Demonic Soul", Level=2825, Island="Haunted Castle S3b"},
-    {Name="Possessed Mummy", Level=2875, Island="Haunted Castle S3b"},
+    {Name="Bandit",Level=1,Island="Starter Island"},
+    {Name="Monkey",Level=1,Island="Starter Island"},
+    {Name="Blade Bandit",Level=15,Island="Jungle"},
+    {Name="Jungle Pirate",Level=20,Island="Jungle"},
+    {Name="Desert Bandit",Level=30,Island="Desert"},
+    {Name="Desert Officer",Level=40,Island="Desert"},
+    {Name="Snow Bandit",Level=50,Island="Frozen Village"},
+    {Name="Snowman",Level=60,Island="Frozen Village"},
+    {Name="Frost Bandit",Level=75,Island="Marine Ford"},
+    {Name="Marine",Level=85,Island="Marine Ford"},
+    {Name="Sky Bandit",Level=90,Island="Skylands"},
+    {Name="Dark Master",Level=100,Island="Skylands"},
+    {Name="Fighter",Level=120,Island="Colosseum"},
+    {Name="Fishman",Level=150,Island="Underwater City"},
+    {Name="Magma Ninja",Level=175,Island="Fountain City"},
+    {Name="Pirate Boss",Level=200,Island="Fountain City"},
+    {Name="Snow Trooper",Level=250,Island="Kingdom of Rose"},
+    {Name="Winter Warrior",Level=300,Island="Kingdom of Rose"},
+    {Name="Lab Subordinate",Level=350,Island="Green Zone"},
+    {Name="Horned Warrior",Level=400,Island="Green Zone"},
+    {Name="Military Soldier",Level=450,Island="Graveyard"},
+    {Name="Military Spy",Level=500,Island="Graveyard"},
+    {Name="Reborn Skeleton",Level=550,Island="Graveyard"},
+    {Name="Living Zombie",Level=600,Island="Graveyard"},
+    {Name="Demonic Soul",Level=650,Island="Graveyard"},
+    {Name="Possessed Mummy",Level=700,Island="Graveyard"},
+    {Name="Snow Lurker",Level=725,Island="Snow Mountain"},
+    {Name="Yeti",Level=750,Island="Snow Mountain"},
+    {Name="Pirate Millionaire",Level=775,Island="Hot and Cold"},
+    {Name="Pistol Billionaire",Level=800,Island="Hot and Cold"},
+    {Name="Dragon Crew Archer",Level=850,Island="Hot and Cold"},
+    {Name="Dragon Crew Warrior",Level=875,Island="Hot and Cold"},
+    {Name="Amazon",Level=900,Island="Haunted Castle"},
+    {Name="Island Empress",Level=925,Island="Haunted Castle"},
+    {Name="Hydra Enforcer",Level=950,Island="Haunted Castle"},
+    {Name="Venomous Assailant",Level=975,Island="Haunted Castle"},
+    {Name="Reborn Skeleton",Level=1000,Island="Cursed Ship"},
+    {Name="Living Zombie",Level=1025,Island="Cursed Ship"},
+    {Name="Demonic Soul",Level=1050,Island="Cursed Ship"},
+    {Name="Possessed Mummy",Level=1075,Island="Cursed Ship"},
+    {Name="Snow Lurker",Level=1100,Island="Cursed Ship"},
+    {Name="Ice Jailer",Level=1125,Island="Cursed Ship"},
+    {Name="Cursed Pirate",Level=1150,Island="Cursed Ship"},
+    {Name="Cursed Captain",Level=1175,Island="Cursed Ship"},
+    {Name="Cursed Skeleton",Level=1200,Island="Cursed Ship"},
+    {Name="Sea Soldier",Level=1250,Island="Forgotten Island"},
+    {Name="Water Fighter",Level=1300,Island="Forgotten Island"},
+    {Name="Pirate Millionaire",Level=1350,Island="Forgotten Island"},
+    {Name="Forest Pirate",Level=1375,Island="Forgotten Island"},
+    {Name="Mythological Pirate",Level=1425,Island="Forgotten Island"},
+    {Name="Jungle Pirate",Level=1475,Island="Forgotten Island"},
+    {Name="Musketeer Pirate",Level=1500,Island="Forgotten Island"},
+    {Name="Pirate Luffy",Level=1500,Island="Port Town"},
+    {Name="Pirate Crew Member",Level=1525,Island="Port Town"},
+    {Name="Marine Recruit",Level=1550,Island="Port Town"},
+    {Name="Marine Grunt",Level=1575,Island="Port Town"},
+    {Name="Fishman Raider",Level=1625,Island="Hydra Island"},
+    {Name="Fishman Captain",Level=1675,Island="Hydra Island"},
+    {Name="Forest Pirate",Level=1725,Island="Hydra Island"},
+    {Name="Mythological Pirate",Level=1775,Island="Hydra Island"},
+    {Name="Jungle Pirate",Level=1825,Island="Hydra Island"},
+    {Name="Musketeer Pirate",Level=1875,Island="Hydra Island"},
 }
 
 local function GetBestQuest()
@@ -250,9 +163,7 @@ local function GetBestQuest()
     local best = nil
     for _, q in pairs(QUESTS) do
         if q.Level <= lvl then
-            if not best or q.Level > best.Level then
-                best = q
-            end
+            if not best or q.Level > best.Level then best = q end
         end
     end
     return best
@@ -264,13 +175,11 @@ local currentQuest = nil
 local function GetQuest()
     local best = GetBestQuest()
     if not best then return false end
-    
     pcall(function()
         RS.Remotes.CommF_:InvokeServer("StartQuest", best.Name, best.Level)
     end)
-    
     currentQuest = best
-    print("📜 รับเควสต์: " .. best.Name .. " (Lv." .. best.Level .. ") → " .. best.Island)
+    print("📜 รับเควสต์: " .. best.Name .. " → " .. best.Island)
     return true
 end
 
@@ -281,32 +190,18 @@ local function HasQuest()
     return ok and has
 end
 
--- ================== 📍 TELEPORT ==================
-local function TeleportTo(cf)
-    pcall(function()
-        local h = HRP()
-        if not h then return end
-        h.CFrame = cf
-    end)
-end
-
+-- ================== TELEPORT ==================
 local function TeleportToIsland(islandName)
     local island = ISLANDS[islandName]
-    if not island then
-        warn("⚠️ ไม่เจอเกาะ: " .. islandName)
-        return false
-    end
+    if not island then return false end
     pcall(function()
         local h = HRP()
-        if h then
-            h.CFrame = island.CFrame + Vector3.new(0, 30, 0)
-        end
+        if h then h.CFrame = island.CFrame + Vector3.new(0, 30, 0) end
     end)
     return true
 end
 
--- ================== 🎯 BRING MOBS (แก้ไม่ให้ขึ้นฟ้า) ==================
--- ดึงมอนมารวมที่ตัวเรา ระยะ 25 studs ด้านหน้า
+-- ================== BRING MOBS ==================
 local function BringMobToPlayer(mob)
     pcall(function()
         local h = HRP()
@@ -315,29 +210,17 @@ local function BringMobToPlayer(mob)
         local mobHum = mob:FindFirstChild("Humanoid")
         if not mobHRP or not mobHum then return end
         
-        -- ✅ ดึงมารวมที่ตัวเรา (ระยะ 15 studs ด้านหน้า ไม่ขึ้นฟ้า)
         local offset = Vector3.new(
-            math.random(-15, 15),
-            3,  -- ความสูง 3 studs (เท่าตัวเรา)
-            math.random(-15, 15)
+            math.random(-15, 15), 3, math.random(-15, 15)
         )
-        local targetPos = h.Position + offset
-        
-        -- ใช้ CFrame ตรงๆ ไม่ให้ลอย
-        mobHRP.CFrame = CFrame.new(targetPos)
+        mobHRP.CFrame = CFrame.new(h.Position + offset)
         mobHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        
-        -- หยุดการเคลื่อนที่ของมอน
         mobHum.WalkSpeed = 0
         mobHum.JumpPower = 0
-        mobHum.PlatformStand = true  -- ✅ ป้องกันการลอย
-        
-        -- ล็อค Position ไว้ (ทุก 0.1 วิ จะ re-position)
-        mobHRP.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.01, 0.01, 0, 0)
+        mobHum.PlatformStand = true
     end)
 end
 
--- Bring Mobs Loop
 task.spawn(function()
     while task.wait(0.05) do
         if CFG.BringMobs and (CFG.AutoFarm or CFG.Magnet) then
@@ -346,14 +229,70 @@ task.spawn(function()
                 if not h then return end
                 local en = workspace:FindFirstChild("Enemies")
                 if not en then return end
-                
                 for _, m in pairs(en:GetChildren()) do
                     local mobHRP = m:FindFirstChild("HumanoidRootPart")
                     local mobHum = m:FindFirstChild("Humanoid")
-                    if mobHRP and mobHum and mobHum.Health > 0 then
-                        local dist = (mobHRP.Position - h.Position).Magnitude
-                        if dist <= 300 then
-                            BringMobToPlayer(m)
+                    if mobHRP and mobHum and mobHum.Health > 0 
+                       and (mobHRP.Position - h.Position).Magnitude <= 300 then
+                        BringMobToPlayer(m)
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ================== FAST CLICK ==================
+local function Click()
+    pcall(function()
+        VU:CaptureController()
+        VU:ClickButton1(Vector2.new(
+            workspace.CurrentCamera.ViewportSize.X / 2,
+            workspace.CurrentCamera.ViewportSize.Y / 2
+        ))
+    end)
+end
+
+local function HasTool()
+    local c = Char()
+    return c and c:FindFirstChildOfClass("Tool") ~= nil
+end
+
+local function HasEnemyNearby(radius)
+    radius = radius or 80
+    local h = HRP()
+    if not h then return false end
+    local en = workspace:FindFirstChild("Enemies")
+    if not en then return false end
+    for _, m in pairs(en:GetChildren()) do
+        local mobHRP = m:FindFirstChild("HumanoidRootPart")
+        local mobHum = m:FindFirstChild("Humanoid")
+        if mobHRP and mobHum and mobHum.Health > 0 
+           and (mobHRP.Position - h.Position).Magnitude <= radius then
+            return true
+        end
+    end
+    return false
+end
+
+RunService.Heartbeat:Connect(function()
+    if not CFG.AutoClick then return end
+    if not HasTool() then return end
+    if not HasEnemyNearby(100) then return end
+    Click()
+end)
+
+-- Auto Equip
+task.spawn(function()
+    while task.wait(2) do
+        if CFG.AutoEquip and CFG.AutoFarm then
+            pcall(function()
+                local c = Char()
+                if c and not c:FindFirstChildOfClass("Tool") then
+                    local bp = LP:FindFirstChild("Backpack")
+                    if bp then
+                        for _, item in pairs(bp:GetChildren()) do
+                            if item:IsA("Tool") then item.Parent = c break end
                         end
                     end
                 end
@@ -362,93 +301,32 @@ task.spawn(function()
     end
 end)
 
--- ================== ⚡ FAST CLICK (แก้ให้เร็วสุด) ==================
-local lastClick = 0
-local function Click()
-    pcall(function()
-        VU:CaptureController()
-        VU:ClickButton1(Vector2.new(0, 0))
-    end)
-end
-
--- ✅ ใช้ RunService.Heartbeat เพื่อคลิกทุกเฟรม (เร็วที่สุด)
--- + เพิ่ม VIM สำหรับ executor ที่ VU ไม่ทำงาน
-local ClickConn = RunService.Heartbeat:Connect(function()
-    if not CFG.AutoClick then return end
-    if not CFG.AutoFarm then return end
-    
-    pcall(function()
-        local h = HRP()
-        if not h then return end
-        
-        -- เช็คว่ามีมอนใกล้ไหม
-        local hasEnemy = false
-        local en = workspace:FindFirstChild("Enemies")
-        if en then
-            for _, m in pairs(en:GetChildren()) do
-                local mobHRP = m:FindFirstChild("HumanoidRootPart")
-                local mobHum = m:FindFirstChild("Humanoid")
-                if mobHRP and mobHum and mobHum.Health > 0 
-                   and (mobHRP.Position - h.Position).Magnitude <= 80 then
-                    hasEnemy = true
-                    break
-                end
-            end
-        end
-        
-        if hasEnemy then
-            -- คลิก 2 วิธีพร้อมกันเพื่อความชัวร์
-            VU:CaptureController()
-            VU:ClickButton1(Vector2.new(0, 0))
-        end
-    end)
-end)
-
--- ================== ⌨️ SKILL COMBO ==================
+-- ================== SKILL ==================
 local SKILL_KEYS = {
     Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V,
     Enum.KeyCode.F, Enum.KeyCode.E, Enum.KeyCode.Q, Enum.KeyCode.R,
 }
 
-local function PressKey(keyCode)
+local function PressKey(k)
     pcall(function()
-        VIM:SendKeyEvent(true, keyCode, false, game)
+        VIM:SendKeyEvent(true, k, false, game)
         task.wait(0.01)
-        VIM:SendKeyEvent(false, keyCode, false, game)
+        VIM:SendKeyEvent(false, k, false, game)
     end)
 end
 
 task.spawn(function()
     while task.wait(0.2) do
-        if CFG.AutoSkill then
-            pcall(function()
-                local h = HRP()
-                if not h then return end
-                local hasEnemy = false
-                local en = workspace:FindFirstChild("Enemies")
-                if en then
-                    for _, m in pairs(en:GetChildren()) do
-                        local mobHRP = m:FindFirstChild("HumanoidRootPart")
-                        local mobHum = m:FindFirstChild("Humanoid")
-                        if mobHRP and mobHum and mobHum.Health > 0 
-                           and (mobHRP.Position - h.Position).Magnitude <= 60 then
-                            hasEnemy = true
-                            break
-                        end
-                    end
-                end
-                if hasEnemy then
-                    for _, k in pairs(SKILL_KEYS) do
-                        PressKey(k)
-                        task.wait(0.03)
-                    end
-                end
-            end)
+        if CFG.AutoSkill and HasEnemyNearby(60) then
+            for _, k in pairs(SKILL_KEYS) do
+                PressKey(k)
+                task.wait(0.03)
+            end
         end
     end
 end)
 
--- ================== ANTI-AFK ==================
+-- ================== SYSTEMS ==================
 LP.Idled:Connect(function()
     pcall(function()
         VU:CaptureController()
@@ -456,20 +334,15 @@ LP.Idled:Connect(function()
     end)
 end)
 
--- ================== STATS ==================
 task.spawn(function()
     while task.wait(0.3) do
         pcall(function()
             local h = Hum()
-            if h then
-                h.WalkSpeed = CFG.WalkSpeed
-                h.JumpPower = CFG.JumpPower
-            end
+            if h then h.WalkSpeed = CFG.WalkSpeed h.JumpPower = CFG.JumpPower end
         end)
     end
 end)
 
--- ================== AUTO HAKI ==================
 task.spawn(function()
     while task.wait(0.5) do
         if CFG.AutoHaki then
@@ -483,17 +356,13 @@ task.spawn(function()
     end
 end)
 
--- ================== FAST ATTACK ==================
 task.spawn(function()
     local getup = getupvalues or debug.getupvalue
     local ok, CF = pcall(function()
         local c = require(LP.PlayerScripts:WaitForChild("CombatFramework"))
         return getup(c)[2]
     end)
-    if not ok then
-        warn("⚠️ FastAttack ไม่พร้อม")
-        return
-    end
+    if not ok then return end
     while task.wait(0.1) do
         if CFG.FastAttack then
             pcall(function()
@@ -509,7 +378,6 @@ task.spawn(function()
     end
 end)
 
--- ================== NOCLIP ==================
 task.spawn(function()
     while task.wait(0.2) do
         if CFG.NoClip then
@@ -527,32 +395,20 @@ task.spawn(function()
     end
 end)
 
--- ================== 🌍 AUTO ISLAND + FARM ==================
--- ขั้นตอน:
--- 1. ดู Level → หาเควสต์ที่ดีที่สุด
--- 2. เช็คว่าเราอยู่เกาะที่ถูกไหม → ถ้าไม่ Teleport ไป
--- 3. รับเควสต์
--- 4. ดึงมอน + ตี
--- 5. ครบเควสต์ → วนใหม่
-
+-- ================== AUTO FARM ==================
 local function GetClosestEnemy(questName)
     local h = HRP()
-    if not h then return nil end
+    if not h then return nil, math.huge end
     local en = workspace:FindFirstChild("Enemies")
-    if not en then return nil end
-    
+    if not en then return nil, math.huge end
     local closest, closestDist = nil, math.huge
     for _, m in pairs(en:GetChildren()) do
         local mobHRP = m:FindFirstChild("HumanoidRootPart")
         local mobHum = m:FindFirstChild("Humanoid")
         if mobHRP and mobHum and mobHum.Health > 0 then
-            -- ถ้ามีชื่อเควสต์ → ตรงกับเควสต์ก่อน
             if questName and m.Name == questName then
                 local d = (mobHRP.Position - h.Position).Magnitude
-                if d < closestDist then
-                    closest = m
-                    closestDist = d
-                end
+                if d < closestDist then closest = m closestDist = d end
             end
         end
     end
@@ -560,34 +416,27 @@ local function GetClosestEnemy(questName)
 end
 
 task.spawn(function()
-    while task.wait(0.3) do
+    while task.wait(0.2) do
         if CFG.AutoFarm then
             pcall(function()
                 local h = HRP()
                 if not h then return end
-
-                -- STEP 1: หาเควสต์ที่ดีที่สุด
                 local best = GetBestQuest()
                 if not best then return end
 
-                -- STEP 2: Auto Island - ถ้าอยู่ผิดเกาะ ให้ย้าย
                 if CFG.AutoIsland and best.Island then
                     local island = ISLANDS[best.Island]
                     if island then
-                        -- เช็คระยะห่างจากเกาะเป้าหมาย
                         local dist = (h.Position - island.CFrame.Position).Magnitude
                         if dist > 2000 then
-                            -- ห่างเกิน → Teleport ไปเกาะ
                             TeleportToIsland(best.Island)
-                            task.wait(1)
+                            task.wait(1.5)
                             return
                         end
                     end
                 end
 
-                -- STEP 3: รับเควสต์ถ้ายังไม่มี
                 if CFG.AutoQuest and not HasQuest() then
-                    -- ถ้า currentQuest ไม่ตรงกับ best → รับใหม่
                     if not currentQuest or currentQuest.Name ~= best.Name then
                         GetQuest()
                         task.wait(1)
@@ -595,17 +444,10 @@ task.spawn(function()
                     end
                 end
 
-                -- STEP 4: หามอน
                 local questName = currentQuest and currentQuest.Name or nil
                 local target, dist = GetClosestEnemy(questName)
-                
-                -- ถ้าไม่เจอมอนในเควสต์ → ใช้ตัวไหนก็ได้
-                if not target then
-                    target, dist = GetClosestEnemy(nil)
-                end
-
-                -- STEP 5: Teleport ไปหามอน
-                if target and dist then
+                if not target then target, dist = GetClosestEnemy(nil) end
+                if target then
                     local mobHRP = target:FindFirstChild("HumanoidRootPart")
                     if mobHRP then
                         h.CFrame = mobHRP.CFrame * CFrame.new(0, CFG.Distance, 0)
@@ -619,13 +461,26 @@ end)
 print("✅ Systems loaded")
 
 -- ================================================================
--- ================== 🎨 UI =======================================
+-- ========== 🎨 NEON GLASSMORPHISM UI v4.0 ======================
 -- ================================================================
 
 local old = game.CoreGui:FindFirstChild("RbotPremium")
 if old then old:Destroy() end
 local oldBlur = Lighting:FindFirstChild("RbotBlur")
 if oldBlur then oldBlur:Destroy() end
+
+-- Color Palette
+local COLORS = {
+    Bg          = Color3.fromRGB(8, 6, 16),
+    BgSecondary = Color3.fromRGB(18, 14, 28),
+    Glass       = Color3.fromRGB(28, 22, 42),
+    Border      = Color3.fromRGB(120, 80, 200),
+    Purple      = Color3.fromRGB(160, 80, 255),
+    Pink        = Color3.fromRGB(255, 60, 180),
+    Cyan        = Color3.fromRGB(80, 220, 255),
+    Text        = Color3.fromRGB(240, 235, 255),
+    TextDim     = Color3.fromRGB(150, 140, 180),
+}
 
 local Blur = Instance.new("BlurEffect")
 Blur.Name = "RbotBlur"
@@ -640,64 +495,97 @@ SG.IgnoreGuiInset = true
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SG.DisplayOrder = 999
 
--- ============ MAIN ============
+-- ============ MAIN FRAME ============
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Size = UDim2.new(0, 0, 0, 0)
-Main.Position = UDim2.new(0.5, -370, 0.5, -250)
-Main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-Main.BackgroundTransparency = 0.05
+Main.Position = UDim2.new(0.5, -390, 0.5, -260)
+Main.BackgroundColor3 = COLORS.Bg
+Main.BackgroundTransparency = 0.08
 Main.BorderSizePixel = 0
-Main.ClipsDescendants = true
+Main.ClipsDescendants = false
 Main.Parent = SG
 
 local MC = Instance.new("UICorner")
-MC.CornerRadius = UDim.new(0, 18)
+MC.CornerRadius = UDim.new(0, 22)
 MC.Parent = Main
 
-local MStroke = Instance.new("UIStroke")
-MStroke.Color = Color3.fromRGB(80, 60, 120)
-MStroke.Thickness = 1.5
-MStroke.Transparency = 0.3
-MStroke.Parent = Main
+-- Animated Neon Border (2 layers)
+local BorderGlow = Instance.new("Frame")
+BorderGlow.Name = "BorderGlow"
+BorderGlow.Size = UDim2.new(1, 8, 1, 8)
+BorderGlow.Position = UDim2.new(0, -4, 0, -4)
+BorderGlow.BackgroundColor3 = COLORS.Purple
+BorderGlow.BackgroundTransparency = 0.5
+BorderGlow.BorderSizePixel = 0
+BorderGlow.ZIndex = -1
+BorderGlow.Parent = Main
 
-local Glow = Instance.new("ImageLabel")
-Glow.Size = UDim2.new(1, 40, 1, 40)
-Glow.Position = UDim2.new(0, -20, 0, -20)
-Glow.BackgroundTransparency = 1
-Glow.Image = "rbxassetid://4996891970"
-Glow.ImageColor3 = Color3.fromRGB(138, 43, 226)
-Glow.ImageTransparency = 0.5
-Glow.ScaleType = Enum.ScaleType.Slice
-Glow.SliceCenter = Rect.new(20, 20, 280, 280)
-Glow.ZIndex = 0
-Glow.Parent = Main
+local BGC = Instance.new("UICorner")
+BGC.CornerRadius = UDim.new(0, 24)
+BGC.Parent = BorderGlow
 
--- ============ TOGGLE ============
+local BGG = Instance.new("UIGradient")
+BGG.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, COLORS.Purple),
+    ColorSequenceKeypoint.new(0.5, COLORS.Pink),
+    ColorSequenceKeypoint.new(1, COLORS.Cyan),
+}
+BGG.Rotation = 0
+BGG.Parent = BorderGlow
+
+-- Rotate gradient
+task.spawn(function()
+    local rot = 0
+    while BorderGlow.Parent do
+        rot = (rot + 2) % 360
+        BGG.Rotation = rot
+        task.wait(0.05)
+    end
+end)
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = COLORS.Border
+MainStroke.Thickness = 1.5
+MainStroke.Transparency = 0.4
+MainStroke.Parent = Main
+
+-- Background Pattern (Noise)
+local NoiseOverlay = Instance.new("ImageLabel")
+NoiseOverlay.Size = UDim2.new(1, 0, 1, 0)
+NoiseOverlay.BackgroundTransparency = 1
+NoiseOverlay.Image = "rbxassetid://5588597776"
+NoiseOverlay.ImageTransparency = 0.94
+NoiseOverlay.ImageColor3 = COLORS.Purple
+NoiseOverlay.ScaleType = Enum.ScaleType.Tile
+NoiseOverlay.TileSize = UDim2.new(0, 200, 0, 200)
+NoiseOverlay.ZIndex = 0
+NoiseOverlay.Parent = Main
+
+-- ============ TOGGLE SYSTEM ============
 local uiOpen = true
 local FloatingBtn
-local OPEN_SIZE = UDim2.new(0, 740, 0, 500)
+local OPEN_SIZE = UDim2.new(0, 780, 0, 520)
 
 local function SetUIVisible(visible)
     if uiOpen == visible then return end
     uiOpen = visible
-
     if visible then
         Main.Visible = true
-        TS:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = OPEN_SIZE, BackgroundTransparency = 0.05
+        TS:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = OPEN_SIZE, BackgroundTransparency = 0.08
         }):Play()
-        TS:Create(Blur, TweenInfo.new(0.4), {Size = 14}):Play()
+        TS:Create(Blur, TweenInfo.new(0.4), {Size = 16}):Play()
         if FloatingBtn then
-            TS:Create(FloatingBtn, TweenInfo.new(0.3), {
-                Position = UDim2.new(0, -60, 0.5, -22)
+            TS:Create(FloatingBtn, TweenInfo.new(0.4), {
+                Position = UDim2.new(0, -70, 0.5, -28)
             }):Play()
         end
     else
         TS:Create(Blur, TweenInfo.new(0.4), {Size = 0}):Play()
         if FloatingBtn then
-            TS:Create(FloatingBtn, TweenInfo.new(0.3), {
-                Position = UDim2.new(0, 20, 0.5, -22)
+            TS:Create(FloatingBtn, TweenInfo.new(0.4), {
+                Position = UDim2.new(0, 20, 0.5, -28)
             }):Play()
         end
         local t = TS:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
@@ -710,49 +598,99 @@ local function SetUIVisible(visible)
     end
 end
 
-TS:Create(Main, TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+TS:Create(Main, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
     Size = OPEN_SIZE
 }):Play()
-TS:Create(Blur, TweenInfo.new(0.7), {Size = 14}):Play()
+TS:Create(Blur, TweenInfo.new(0.7), {Size = 16}):Play()
 
 -- ============ HEADER ============
 local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 65)
-Header.BackgroundColor3 = Color3.fromRGB(25, 20, 35)
-Header.BackgroundTransparency = 0.2
+Header.Size = UDim2.new(1, 0, 0, 70)
+Header.BackgroundColor3 = COLORS.BgSecondary
+Header.BackgroundTransparency = 0.4
 Header.BorderSizePixel = 0
 Header.Parent = Main
 
 local HC = Instance.new("UICorner")
-HC.CornerRadius = UDim.new(0, 18)
+HC.CornerRadius = UDim.new(0, 22)
 HC.Parent = Header
 
+-- Fix bottom corners
+local HeaderFix = Instance.new("Frame")
+HeaderFix.Size = UDim2.new(1, 0, 0, 22)
+HeaderFix.Position = UDim2.new(0, 0, 1, -22)
+HeaderFix.BackgroundColor3 = COLORS.BgSecondary
+HeaderFix.BackgroundTransparency = 0.4
+HeaderFix.BorderSizePixel = 0
+HeaderFix.Parent = Header
+
+-- Header gradient line
 local HLine = Instance.new("Frame")
-HLine.Size = UDim2.new(1, 0, 0, 1)
-HLine.Position = UDim2.new(0, 0, 1, -1)
-HLine.BackgroundColor3 = Color3.fromRGB(80, 60, 120)
-HLine.BackgroundTransparency = 0.5
+HLine.Size = UDim2.new(1, -40, 0, 2)
+HLine.Position = UDim2.new(0, 20, 1, -1)
+HLine.BackgroundColor3 = COLORS.Purple
 HLine.BorderSizePixel = 0
 HLine.Parent = Header
 
-local LogoIcon = Instance.new("Frame")
-LogoIcon.Size = UDim2.new(0, 40, 0, 40)
-LogoIcon.Position = UDim2.new(0, 20, 0.5, -20)
-LogoIcon.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-LogoIcon.BorderSizePixel = 0
-LogoIcon.Parent = Header
+local HLineC = Instance.new("UICorner")
+HLineC.CornerRadius = UDim.new(1, 0)
+HLineC.Parent = HLine
 
-local LIC = Instance.new("UICorner")
-LIC.CornerRadius = UDim.new(1, 0)
-LIC.Parent = LogoIcon
-
-local LIG = Instance.new("UIGradient")
-LIG.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 100))
+local HLineG = Instance.new("UIGradient")
+HLineG.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, COLORS.Purple),
+    ColorSequenceKeypoint.new(0.5, COLORS.Pink),
+    ColorSequenceKeypoint.new(1, COLORS.Cyan),
 }
-LIG.Rotation = 45
-LIG.Parent = LogoIcon
+HLineG.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 1),
+    NumberSequenceKeypoint.new(0.5, 0),
+    NumberSequenceKeypoint.new(1, 1),
+}
+HLineG.Parent = HLine
+
+-- Logo (spinning)
+local LogoWrap = Instance.new("Frame")
+LogoWrap.Size = UDim2.new(0, 46, 0, 46)
+LogoWrap.Position = UDim2.new(0, 18, 0.5, -23)
+LogoWrap.BackgroundColor3 = COLORS.Purple
+LogoWrap.BorderSizePixel = 0
+LogoWrap.Parent = Header
+
+local LWC = Instance.new("UICorner")
+LWC.CornerRadius = UDim.new(1, 0)
+LWC.Parent = LogoWrap
+
+local LWG = Instance.new("UIGradient")
+LWG.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, COLORS.Purple),
+    ColorSequenceKeypoint.new(0.5, COLORS.Pink),
+    ColorSequenceKeypoint.new(1, COLORS.Cyan),
+}
+LWG.Rotation = 45
+LWG.Parent = LogoWrap
+
+task.spawn(function()
+    local rot = 45
+    while LogoWrap.Parent do
+        rot = (rot + 1) % 360
+        LWG.Rotation = rot
+        task.wait(0.05)
+    end
+end)
+
+-- Glow
+local LogoGlow = Instance.new("ImageLabel")
+LogoGlow.Size = UDim2.new(1, 30, 1, 30)
+LogoGlow.Position = UDim2.new(0, -15, 0, -15)
+LogoGlow.BackgroundTransparency = 1
+LogoGlow.Image = "rbxassetid://4996891970"
+LogoGlow.ImageColor3 = COLORS.Purple
+LogoGlow.ImageTransparency = 0.3
+LogoGlow.ScaleType = Enum.ScaleType.Slice
+LogoGlow.SliceCenter = Rect.new(20, 20, 280, 280)
+LogoGlow.ZIndex = -1
+LogoGlow.Parent = LogoWrap
 
 local LogoTxt = Instance.new("TextLabel")
 LogoTxt.Size = UDim2.new(1, 0, 1, 0)
@@ -760,123 +698,169 @@ LogoTxt.BackgroundTransparency = 1
 LogoTxt.Text = "R"
 LogoTxt.TextColor3 = Color3.fromRGB(255, 255, 255)
 LogoTxt.Font = Enum.Font.GothamBlack
-LogoTxt.TextSize = 22
-LogoTxt.Parent = LogoIcon
+LogoTxt.TextSize = 26
+LogoTxt.ZIndex = 2
+LogoTxt.Parent = LogoWrap
 
+-- Title
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0, 300, 0, 25)
-Title.Position = UDim2.new(0, 72, 0, 12)
+Title.Size = UDim2.new(0, 350, 0, 26)
+Title.Position = UDim2.new(0, 76, 0, 14)
 Title.BackgroundTransparency = 1
-Title.Text = "RBOT • PREMIUM v3.4"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "RBOT PREMIUM"
+Title.TextColor3 = COLORS.Text
 Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 18
+Title.TextSize = 20
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Header
 
+local TitleGrad = Instance.new("UIGradient")
+TitleGrad.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, COLORS.Text),
+    ColorSequenceKeypoint.new(0.5, COLORS.Purple),
+    ColorSequenceKeypoint.new(1, COLORS.Pink),
+}
+TitleGrad.Parent = Title
+
 local SubTitle = Instance.new("TextLabel")
-SubTitle.Size = UDim2.new(0, 300, 0, 18)
-SubTitle.Position = UDim2.new(0, 72, 0, 35)
+SubTitle.Size = UDim2.new(0, 350, 0, 18)
+SubTitle.Position = UDim2.new(0, 76, 0, 38)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Bring Mobs + Auto Island | " .. WORLD[game.PlaceId]
-SubTitle.TextColor3 = Color3.fromRGB(160, 150, 180)
+SubTitle.Text = "v4.0 ULTIMATE • " .. WORLD[game.PlaceId] .. " • " .. LP.Name
+SubTitle.TextColor3 = COLORS.TextDim
 SubTitle.Font = Enum.Font.GothamMedium
-SubTitle.TextSize = 11
+SubTitle.TextSize = 10
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Parent = Header
 
+-- Live Stats Panel (right)
+local StatsPanel = Instance.new("Frame")
+StatsPanel.Size = UDim2.new(0, 200, 0, 42)
+StatsPanel.Position = UDim2.new(1, -220, 0.5, -21)
+StatsPanel.BackgroundColor3 = COLORS.Glass
+StatsPanel.BackgroundTransparency = 0.5
+StatsPanel.BorderSizePixel = 0
+StatsPanel.Parent = Header
+
+local SPC = Instance.new("UICorner")
+SPC.CornerRadius = UDim.new(0, 12)
+SPC.Parent = StatsPanel
+
+local SPStroke = Instance.new("UIStroke")
+SPStroke.Color = COLORS.Border
+SPStroke.Thickness = 1
+SPStroke.Transparency = 0.6
+SPStroke.Parent = StatsPanel
+
 local LevelTxt = Instance.new("TextLabel")
-LevelTxt.Size = UDim2.new(0, 150, 0, 20)
-LevelTxt.Position = UDim2.new(1, -250, 0, 20)
+LevelTxt.Size = UDim2.new(0.5, -8, 1, 0)
+LevelTxt.Position = UDim2.new(0, 8, 0, 0)
 LevelTxt.BackgroundTransparency = 1
 LevelTxt.Text = "LV." .. SafeGet(LP.Data, "Level")
-LevelTxt.TextColor3 = Color3.fromRGB(200, 180, 255)
+LevelTxt.TextColor3 = COLORS.Cyan
 LevelTxt.Font = Enum.Font.GothamBold
-LevelTxt.TextSize = 12
-LevelTxt.TextXAlignment = Enum.TextXAlignment.Right
-LevelTxt.Parent = Header
+LevelTxt.TextSize = 13LevelTxt.TextXAlignment = Enum.TextXAlignment.Left
+LevelTxt.Parent = StatsPanel
 
 local QuestTxt = Instance.new("TextLabel")
-QuestTxt.Size = UDim2.new(0, 150, 0, 18)
-QuestTxt.Position = UDim2.new(1, -250, 0, 35)
+QuestTxt.Size = UDim2.new(0.5, -8, 1, 0)
+QuestTxt.Position = UDim2.new(0.5, 0, 0, 0)
 QuestTxt.BackgroundTransparency = 1
-QuestTxt.Text = "📜 รอเควสต์..."
-QuestTxt.TextColor3 = Color3.fromRGB(160, 150, 180)
-QuestTxt.Font = Enum.Font.Gotham
-QuestTxt.TextSize = 10
+QuestTxt.Text = "📜"
+QuestTxt.TextColor3 = COLORS.Pink
+QuestTxt.Font = Enum.Font.GothamBold
+QuestTxt.TextSize = 13
 QuestTxt.TextXAlignment = Enum.TextXAlignment.Right
-QuestTxt.Parent = Header
+QuestTxt.Parent = StatsPanel
 
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
             LevelTxt.Text = "LV." .. SafeGet(LP.Data, "Level")
             if currentQuest then
-                QuestTxt.Text = "📜 " .. currentQuest.Name
+                QuestTxt.Text = "📜 " .. currentQuest.Name:sub(1, 12)
             else
-                QuestTxt.Text = "📜 ไม่มีเควสต์"
+                QuestTxt.Text = "📜 ไม่มี"
             end
         end)
     end
 end)
 
--- Min Btn
+-- Minimize
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 36, 0, 36)
-MinBtn.Position = UDim2.new(1, -95, 0.5, -18)
-MinBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.BackgroundTransparency = 0.9
+MinBtn.Size = UDim2.new(0, 32, 0, 32)
+MinBtn.Position = UDim2.new(1, -76, 0.5, -16)
+MinBtn.BackgroundColor3 = COLORS.Glass
+MinBtn.BackgroundTransparency = 0.3
 MinBtn.Text = "−"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.TextColor3 = COLORS.Text
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 18
+MinBtn.AutoButtonColor = false
 MinBtn.Parent = Header
 
-local MinC = Instance.new("UICorner")
-MinC.CornerRadius = UDim.new(1, 0)
-MinC.Parent = MinBtn
+local MBC = Instance.new("UICorner")
+MBC.CornerRadius = UDim.new(1, 0)
+MBC.Parent = MinBtn
 
-MinBtn.MouseButton1Click:Connect(function()
-    SetUIVisible(false)
+MinBtn.MouseEnter:Connect(function()
+    TS:Create(MinBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.1, BackgroundColor3 = COLORS.Purple
+    }):Play()
 end)
+MinBtn.MouseLeave:Connect(function()
+    TS:Create(MinBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.3, BackgroundColor3 = COLORS.Glass
+    }):Play()
+end)
+MinBtn.MouseButton1Click:Connect(function() SetUIVisible(false) end)
 
 -- Close
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 36, 0, 36)
-CloseBtn.Position = UDim2.new(1, -50, 0.5, -18)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.BackgroundTransparency = 0.9
+CloseBtn.Size = UDim2.new(0, 32, 0, 32)
+CloseBtn.Position = UDim2.new(1, -40, 0.5, -16)
+CloseBtn.BackgroundColor3 = COLORS.Glass
+CloseBtn.BackgroundTransparency = 0.3
 CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextColor3 = COLORS.Text
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 14
+CloseBtn.AutoButtonColor = false
 CloseBtn.Parent = Header
 
 local CBC = Instance.new("UICorner")
 CBC.CornerRadius = UDim.new(1, 0)
 CBC.Parent = CloseBtn
 
-CloseBtn.MouseButton1Click:Connect(function()
-    SetUIVisible(false)
+CloseBtn.MouseEnter:Connect(function()
+    TS:Create(CloseBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.1, BackgroundColor3 = Color3.fromRGB(255, 60, 100)
+    }):Play()
 end)
+CloseBtn.MouseLeave:Connect(function()
+    TS:Create(CloseBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.3, BackgroundColor3 = COLORS.Glass
+    }):Play()
+end)
+CloseBtn.MouseButton1Click:Connect(function() SetUIVisible(false) end)
 
 -- ============ SIDEBAR ============
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 190, 1, -85)
-Sidebar.Position = UDim2.new(0, 15, 0, 75)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-Sidebar.BackgroundTransparency = 0.3
+Sidebar.Size = UDim2.new(0, 200, 1, -90)
+Sidebar.Position = UDim2.new(0, 18, 0, 80)
+Sidebar.BackgroundColor3 = COLORS.Glass
+Sidebar.BackgroundTransparency = 0.55
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 
 local SBC = Instance.new("UICorner")
-SBC.CornerRadius = UDim.new(0, 14)
+SBC.CornerRadius = UDim.new(0, 16)
 SBC.Parent = Sidebar
 
 local SBStroke = Instance.new("UIStroke")
-SBStroke.Color = Color3.fromRGB(60, 50, 90)
+SBStroke.Color = COLORS.Border
 SBStroke.Thickness = 1
-SBStroke.Transparency = 0.5
+SBStroke.Transparency = 0.7
 SBStroke.Parent = Sidebar
 
 local TabList = Instance.new("Frame")
@@ -888,25 +872,25 @@ TabList.Parent = Sidebar
 local TLLay = Instance.new("UIListLayout")
 TLLay.Parent = TabList
 TLLay.SortOrder = Enum.SortOrder.LayoutOrder
-TLLay.Padding = UDim.new(0, 6)
+TLLay.Padding = UDim.new(0, 8)
 
 -- ============ CONTENT ============
 local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, -230, 1, -85)
-Content.Position = UDim2.new(0, 215, 0, 75)
-Content.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-Content.BackgroundTransparency = 0.3
+Content.Size = UDim2.new(1, -240, 1, -90)
+Content.Position = UDim2.new(0, 226, 0, 80)
+Content.BackgroundColor3 = COLORS.Glass
+Content.BackgroundTransparency = 0.55
 Content.BorderSizePixel = 0
 Content.Parent = Main
 
 local CNC = Instance.new("UICorner")
-CNC.CornerRadius = UDim.new(0, 14)
+CNC.CornerRadius = UDim.new(0, 16)
 CNC.Parent = Content
 
 local CNStroke = Instance.new("UIStroke")
-CNStroke.Color = Color3.fromRGB(60, 50, 90)
+CNStroke.Color = COLORS.Border
 CNStroke.Thickness = 1
-CNStroke.Transparency = 0.5
+CNStroke.Transparency = 0.7
 CNStroke.Parent = Content
 
 local Scroll = Instance.new("ScrollingFrame")
@@ -914,15 +898,15 @@ Scroll.Size = UDim2.new(1, -20, 1, -20)
 Scroll.Position = UDim2.new(0, 10, 0, 10)
 Scroll.BackgroundTransparency = 1
 Scroll.BorderSizePixel = 0
-Scroll.ScrollBarThickness = 3
-Scroll.ScrollBarImageColor3 = Color3.fromRGB(138, 43, 226)
+Scroll.ScrollBarThickness = 4
+Scroll.ScrollBarImageColor3 = COLORS.Purple
 Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 Scroll.Parent = Content
 
 local SLLay = Instance.new("UIListLayout")
 SLLay.Parent = Scroll
 SLLay.SortOrder = Enum.SortOrder.LayoutOrder
-SLLay.Padding = UDim.new(0, 8)
+SLLay.Padding = UDim.new(0, 10)
 
 SLLay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 20)
@@ -960,12 +944,12 @@ local FirstTab = false
 
 local function CreateTab(name, icon)
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, 0, 0, 40)
-    Btn.BackgroundColor3 = Color3.fromRGB(30, 28, 42)
-    Btn.BackgroundTransparency = 0.5
+    Btn.Size = UDim2.new(1, 0, 0, 44)
+    Btn.BackgroundColor3 = COLORS.Glass
+    Btn.BackgroundTransparency = 0.7
     Btn.BorderSizePixel = 0
     Btn.Text = "  " .. icon .. "   " .. name
-    Btn.TextColor3 = Color3.fromRGB(160, 150, 190)
+    Btn.TextColor3 = COLORS.TextDim
     Btn.Font = Enum.Font.GothamBold
     Btn.TextSize = 13
     Btn.TextXAlignment = Enum.TextXAlignment.Left
@@ -973,20 +957,29 @@ local function CreateTab(name, icon)
     Btn.Parent = TabList
 
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
+    c.CornerRadius = UDim.new(0, 12)
     c.Parent = Btn
 
     local Ind = Instance.new("Frame")
-    Ind.Size = UDim2.new(0, 3, 0, 0)
+    Ind.Size = UDim2.new(0, 4, 0, 0)
     Ind.Position = UDim2.new(0, 0, 0.5, 0)
     Ind.AnchorPoint = Vector2.new(0, 0.5)
-    Ind.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    Ind.BackgroundColor3 = COLORS.Purple
     Ind.BorderSizePixel = 0
     Ind.Parent = Btn
 
     local IndC = Instance.new("UICorner")
     IndC.CornerRadius = UDim.new(1, 0)
     IndC.Parent = Ind
+
+    local IndG = Instance.new("UIGradient")
+    IndG.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, COLORS.Purple),
+        ColorSequenceKeypoint.new(0.5, COLORS.Pink),
+        ColorSequenceKeypoint.new(1, COLORS.Cyan),
+    }
+    IndG.Rotation = 90
+    IndG.Parent = Ind
 
     local page = Instance.new("Frame")
     page.Size = UDim2.new(1, 0, 0, 0)
@@ -998,37 +991,48 @@ local function CreateTab(name, icon)
     local pLay = Instance.new("UIListLayout")
     pLay.Parent = page
     pLay.SortOrder = Enum.SortOrder.LayoutOrder
-    pLay.Padding = UDim.new(0, 8)
+    pLay.Padding = UDim.new(0, 10)
 
     table.insert(Tabs, {Btn = Btn, Page = page, Ind = Ind})
+
+    Btn.MouseEnter:Connect(function()
+        if page.Visible then return end
+        TS:Create(Btn, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.5, TextColor3 = COLORS.Text
+        }):Play()
+    end)
+    Btn.MouseLeave:Connect(function()
+        if page.Visible then return end
+        TS:Create(Btn, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.7, TextColor3 = COLORS.TextDim
+        }):Play()
+    end)
 
     Btn.MouseButton1Click:Connect(function()
         for _, t in pairs(Tabs) do
             t.Page.Visible = false
             TS:Create(t.Btn, TweenInfo.new(0.2), {
-                BackgroundTransparency = 0.5, 
-                TextColor3 = Color3.fromRGB(160, 150, 190)
+                BackgroundTransparency = 0.7, TextColor3 = COLORS.TextDim
             }):Play()
             TS:Create(t.Ind, TweenInfo.new(0.2), {
-                Size = UDim2.new(0, 3, 0, 0)
+                Size = UDim2.new(0, 4, 0, 0)
             }):Play()
         end
         page.Visible = true
         TS:Create(Btn, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0, 
-            TextColor3 = Color3.fromRGB(255, 255, 255)
+            BackgroundTransparency = 0.3, TextColor3 = COLORS.Text
         }):Play()
         TS:Create(Ind, TweenInfo.new(0.2), {
-            Size = UDim2.new(0, 3, 0, 26)
+            Size = UDim2.new(0, 4, 0, 28)
         }):Play()
     end)
 
     if not FirstTab then
         FirstTab = true
         page.Visible = true
-        Btn.BackgroundTransparency = 0
-        Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        Ind.Size = UDim2.new(0, 3, 0, 26)
+        Btn.BackgroundTransparency = 0.3
+        Btn.TextColor3 = COLORS.Text
+        Ind.Size = UDim2.new(0, 4, 0, 28)
     end
 
     return page
@@ -1036,10 +1040,10 @@ end
 
 local function Section(parent, title)
     local S = Instance.new("TextLabel")
-    S.Size = UDim2.new(1, -8, 0, 26)
+    S.Size = UDim2.new(1, -8, 0, 28)
     S.BackgroundTransparency = 1
-    S.Text = "  ▸  " .. title
-    S.TextColor3 = Color3.fromRGB(200, 150, 255)
+    S.Text = "  ▸  " .. title:upper()
+    S.TextColor3 = COLORS.Purple
     S.Font = Enum.Font.GothamBold
     S.TextSize = 11
     S.TextXAlignment = Enum.TextXAlignment.Left
@@ -1048,48 +1052,48 @@ end
 
 local function Toggle(parent, name, desc, key)
     local F = Instance.new("Frame")
-    F.Size = UDim2.new(1, -8, 0, 58)
-    F.BackgroundColor3 = Color3.fromRGB(28, 26, 38)
-    F.BackgroundTransparency = 0.2
+    F.Size = UDim2.new(1, -8, 0, 62)
+    F.BackgroundColor3 = COLORS.Glass
+    F.BackgroundTransparency = 0.4
     F.BorderSizePixel = 0
     F.Parent = parent
 
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
+    c.CornerRadius = UDim.new(0, 14)
     c.Parent = F
 
     local strk = Instance.new("UIStroke")
-    strk.Color = Color3.fromRGB(60, 50, 90)
+    strk.Color = COLORS.Border
     strk.Thickness = 1
-    strk.Transparency = 0.6
+    strk.Transparency = 0.75
     strk.Parent = F
 
     local L = Instance.new("TextLabel")
-    L.Size = UDim2.new(1, -90, 0, 22)
-    L.Position = UDim2.new(0, 16, 0, 8)
+    L.Size = UDim2.new(1, -100, 0, 22)
+    L.Position = UDim2.new(0, 18, 0, 10)
     L.BackgroundTransparency = 1
     L.Text = name
-    L.TextColor3 = Color3.fromRGB(235, 230, 250)
+    L.TextColor3 = COLORS.Text
     L.Font = Enum.Font.GothamBold
     L.TextSize = 13
     L.TextXAlignment = Enum.TextXAlignment.Left
     L.Parent = F
 
     local D = Instance.new("TextLabel")
-    D.Size = UDim2.new(1, -90, 0, 16)
-    D.Position = UDim2.new(0, 16, 0, 30)
+    D.Size = UDim2.new(1, -100, 0, 16)
+    D.Position = UDim2.new(0, 18, 0, 32)
     D.BackgroundTransparency = 1
     D.Text = desc or ""
-    D.TextColor3 = Color3.fromRGB(140, 130, 165)
+    D.TextColor3 = COLORS.TextDim
     D.Font = Enum.Font.Gotham
     D.TextSize = 10
     D.TextXAlignment = Enum.TextXAlignment.Left
     D.Parent = F
 
     local Bg = Instance.new("Frame")
-    Bg.Size = UDim2.new(0, 46, 0, 24)
-    Bg.Position = UDim2.new(1, -62, 0.5, -12)
-    Bg.BackgroundColor3 = CFG[key] and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(48, 45, 62)
+    Bg.Size = UDim2.new(0, 50, 0, 26)
+    Bg.Position = UDim2.new(1, -68, 0.5, -13)
+    Bg.BackgroundColor3 = CFG[key] and COLORS.Purple or Color3.fromRGB(40, 35, 55)
     Bg.BorderSizePixel = 0
     Bg.Parent = F
 
@@ -1101,15 +1105,15 @@ local function Toggle(parent, name, desc, key)
     if CFG[key] then
         G = Instance.new("UIGradient")
         G.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 100))
+            ColorSequenceKeypoint.new(0, COLORS.Purple),
+            ColorSequenceKeypoint.new(1, COLORS.Pink),
         }
         G.Parent = Bg
     end
 
     local Dot = Instance.new("Frame")
-    Dot.Size = UDim2.new(0, 20, 0, 20)
-    Dot.Position = CFG[key] and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
+    Dot.Size = UDim2.new(0, 22, 0, 22)
+    Dot.Position = CFG[key] and UDim2.new(1, -24, 0.5, -11) or UDim2.new(0, 2, 0.5, -11)
     Dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Dot.BorderSizePixel = 0
     Dot.Parent = Bg
@@ -1124,29 +1128,36 @@ local function Toggle(parent, name, desc, key)
     Btn.Text = ""
     Btn.Parent = F
 
+    Btn.MouseEnter:Connect(function()
+        TS:Create(F, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+    end)
+    Btn.MouseLeave:Connect(function()
+        TS:Create(F, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
+    end)
+
     Btn.MouseButton1Click:Connect(function()
         CFG[key] = not CFG[key]
         if CFG[key] then
             TS:Create(Bg, TweenInfo.new(0.25), {
-                BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+                BackgroundColor3 = COLORS.Purple
             }):Play()
-            TS:Create(Dot, TweenInfo.new(0.25), {
-                Position = UDim2.new(1, -22, 0.5, -10)
+            TS:Create(Dot, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
+                Position = UDim2.new(1, -24, 0.5, -11)
             }):Play()
             if not G then
                 G = Instance.new("UIGradient")
                 G.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 100))
+                    ColorSequenceKeypoint.new(0, COLORS.Purple),
+                    ColorSequenceKeypoint.new(1, COLORS.Pink),
                 }
                 G.Parent = Bg
             end
         else
             TS:Create(Bg, TweenInfo.new(0.25), {
-                BackgroundColor3 = Color3.fromRGB(48, 45, 62)
+                BackgroundColor3 = Color3.fromRGB(40, 35, 55)
             }):Play()
-            TS:Create(Dot, TweenInfo.new(0.25), {
-                Position = UDim2.new(0, 2, 0.5, -10)
+            TS:Create(Dot, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
+                Position = UDim2.new(0, 2, 0.5, -11)
             }):Play()
             if G then G:Destroy() G = nil end
         end
@@ -1155,31 +1166,37 @@ end
 
 local function Slider(parent, name, min, max, key)
     local F = Instance.new("Frame")
-    F.Size = UDim2.new(1, -8, 0, 68)
-    F.BackgroundColor3 = Color3.fromRGB(28, 26, 38)
-    F.BackgroundTransparency = 0.2
+    F.Size = UDim2.new(1, -8, 0, 72)
+    F.BackgroundColor3 = COLORS.Glass
+    F.BackgroundTransparency = 0.4
     F.BorderSizePixel = 0
     F.Parent = parent
 
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
+    c.CornerRadius = UDim.new(0, 14)
     c.Parent = F
+
+    local strk = Instance.new("UIStroke")
+    strk.Color = COLORS.Border
+    strk.Thickness = 1
+    strk.Transparency = 0.75
+    strk.Parent = F
 
     local L = Instance.new("TextLabel")
     L.Size = UDim2.new(1, -30, 0, 22)
-    L.Position = UDim2.new(0, 16, 0, 8)
+    L.Position = UDim2.new(0, 18, 0, 10)
     L.BackgroundTransparency = 1
     L.Text = name .. "  :  " .. CFG[key]
-    L.TextColor3 = Color3.fromRGB(235, 230, 250)
+    L.TextColor3 = COLORS.Text
     L.Font = Enum.Font.GothamBold
     L.TextSize = 13
     L.TextXAlignment = Enum.TextXAlignment.Left
     L.Parent = F
 
     local BarBg = Instance.new("Frame")
-    BarBg.Size = UDim2.new(1, -32, 0, 8)
-    BarBg.Position = UDim2.new(0, 16, 0, 42)
-    BarBg.BackgroundColor3 = Color3.fromRGB(48, 45, 62)
+    BarBg.Size = UDim2.new(1, -36, 0, 8)
+    BarBg.Position = UDim2.new(0, 18, 0, 46)
+    BarBg.BackgroundColor3 = Color3.fromRGB(40, 35, 55)
     BarBg.BorderSizePixel = 0
     BarBg.Parent = F
 
@@ -1191,7 +1208,7 @@ local function Slider(parent, name, min, max, key)
 
     local Fill = Instance.new("Frame")
     Fill.Size = UDim2.new(ratio, 0, 1, 0)
-    Fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    Fill.BackgroundColor3 = COLORS.Purple
     Fill.BorderSizePixel = 0
     Fill.Parent = BarBg
 
@@ -1199,9 +1216,17 @@ local function Slider(parent, name, min, max, key)
     fc.CornerRadius = UDim.new(1, 0)
     fc.Parent = Fill
 
+    local FG = Instance.new("UIGradient")
+    FG.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, COLORS.Purple),
+        ColorSequenceKeypoint.new(0.5, COLORS.Pink),
+        ColorSequenceKeypoint.new(1, COLORS.Cyan),
+    }
+    FG.Parent = Fill
+
     local Dot = Instance.new("Frame")
-    Dot.Size = UDim2.new(0, 16, 0, 16)
-    Dot.Position = UDim2.new(1, -8, 0.5, -8)
+    Dot.Size = UDim2.new(0, 18, 0, 18)
+    Dot.Position = UDim2.new(1, -9, 0.5, -9)
     Dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Dot.BorderSizePixel = 0
     Dot.Parent = Fill
@@ -1209,6 +1234,18 @@ local function Slider(parent, name, min, max, key)
     local dc = Instance.new("UICorner")
     dc.CornerRadius = UDim.new(1, 0)
     dc.Parent = Dot
+
+    local DotGlow = Instance.new("ImageLabel")
+    DotGlow.Size = UDim2.new(1, 20, 1, 20)
+    DotGlow.Position = UDim2.new(0, -10, 0, -10)
+    DotGlow.BackgroundTransparency = 1
+    DotGlow.Image = "rbxassetid://4996891970"
+    DotGlow.ImageColor3 = COLORS.Purple
+    DotGlow.ImageTransparency = 0.4
+    DotGlow.ScaleType = Enum.ScaleType.Slice
+    DotGlow.SliceCenter = Rect.new(20, 20, 280, 280)
+    DotGlow.ZIndex = -1
+    DotGlow.Parent = Dot
 
     local dragging = false
     local Btn = Instance.new("TextButton")
@@ -1249,22 +1286,28 @@ end
 
 local function Button(parent, name, desc, callback)
     local F = Instance.new("Frame")
-    F.Size = UDim2.new(1, -8, 0, 58)
-    F.BackgroundColor3 = Color3.fromRGB(28, 26, 38)
-    F.BackgroundTransparency = 0.2
+    F.Size = UDim2.new(1, -8, 0, 62)
+    F.BackgroundColor3 = COLORS.Glass
+    F.BackgroundTransparency = 0.4
     F.BorderSizePixel = 0
     F.Parent = parent
 
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
+    c.CornerRadius = UDim.new(0, 14)
     c.Parent = F
+
+    local strk = Instance.new("UIStroke")
+    strk.Color = COLORS.Border
+    strk.Thickness = 1
+    strk.Transparency = 0.75
+    strk.Parent = F
 
     local L = Instance.new("TextLabel")
     L.Size = UDim2.new(1, -30, 0, 22)
-    L.Position = UDim2.new(0, 16, 0, 8)
+    L.Position = UDim2.new(0, 18, 0, 10)
     L.BackgroundTransparency = 1
     L.Text = name
-    L.TextColor3 = Color3.fromRGB(235, 230, 250)
+    L.TextColor3 = COLORS.Text
     L.Font = Enum.Font.GothamBold
     L.TextSize = 13
     L.TextXAlignment = Enum.TextXAlignment.Left
@@ -1272,10 +1315,10 @@ local function Button(parent, name, desc, callback)
 
     local D = Instance.new("TextLabel")
     D.Size = UDim2.new(1, -30, 0, 16)
-    D.Position = UDim2.new(0, 16, 0, 30)
+    D.Position = UDim2.new(0, 18, 0, 32)
     D.BackgroundTransparency = 1
     D.Text = desc or ""
-    D.TextColor3 = Color3.fromRGB(140, 130, 165)
+    D.TextColor3 = COLORS.TextDim
     D.Font = Enum.Font.Gotham
     D.TextSize = 10
     D.TextXAlignment = Enum.TextXAlignment.Left
@@ -1287,9 +1330,17 @@ local function Button(parent, name, desc, callback)
     Btn.Text = ""
     Btn.Parent = F
 
-    Btn.MouseButton1Click:Connect(function()
-        pcall(callback)
+    Btn.MouseEnter:Connect(function()
+        TS:Create(F, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.2, BackgroundColor3 = Color3.fromRGB(45, 32, 68)
+        }):Play()
     end)
+    Btn.MouseLeave:Connect(function()
+        TS:Create(F, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.4, BackgroundColor3 = COLORS.Glass
+        }):Play()
+    end)
+    Btn.MouseButton1Click:Connect(function() pcall(callback) end)
 end
 
 -- ================== TABS ==================
@@ -1299,58 +1350,62 @@ local SkillTab = CreateTab("สกิล", "🥋")
 local MiscTab = CreateTab("อื่น ๆ", "⚙️")
 local SetTab = CreateTab("ตั้งค่า", "🔧")
 
-Section(HomeTab, "ข้อมูล")
-Button(HomeTab, "🤖 Rbot v3.4", "Bring Mobs + Auto Island", function() end)
-Button(HomeTab, "📜 เควสต์ปัจจุบัน", "ดูเควสต์ที่ทำอยู่", function() 
+Section(HomeTab, "ข้อมูลระบบ")
+Button(HomeTab, "🤖 Rbot Premium v4.0", "Ultimate Edition • Neon UI", function() end)
+Button(HomeTab, "📜 เควสต์ปัจจุบัน", currentQuest and currentQuest.Name or "ยังไม่มี", function()
     if currentQuest then
-        print("📜 " .. currentQuest.Name .. " | เกาะ: " .. currentQuest.Island)
-    else
-        print("ยังไม่มีเควสต์")
+        print("📜 " .. currentQuest.Name .. " → " .. currentQuest.Island)
     end
 end)
+Button(HomeTab, "📊 สถิติ", "LV." .. SafeGet(LP.Data, "Level") .. " | 💰 " .. FormatNum(SafeGet(LP.Data, "Beli")), function() end)
+
 Section(HomeTab, "วิธีใช้")
 Button(HomeTab, "⌨️ Right Ctrl", "เปิด/ปิด UI", function() end)
-Button(HomeTab, "🟣 โลโก้ R", "คลิกเปิด/ปิด UI", function() end)
+Button(HomeTab, "🟣 โลโก้ R", "คลิกเปิด UI (ตอนปิด)", function() end)
 
-Section(FarmTab, "🎯 Auto Farm System")
+Section(FarmTab, "🎯 Auto Farm")
 Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมัติ", "AutoQuest")
 Toggle(FarmTab, "Auto Farm", "ฟาร์ม + ตี + ย้ายเกาะ", "AutoFarm")
 Toggle(FarmTab, "Auto Island", "ย้ายเกาะตาม Level", "AutoIsland")
-Toggle(FarmTab, "Auto Click", "คลิกเร็วมาก (Heartbeat)", "AutoClick")
-Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมที่ตัวเรา", "BringMobs")
-Toggle(FarmTab, "Magnet", "ดึงของ + มอนทุกอย่าง", "Magnet")
+Toggle(FarmTab, "Auto Click", "คลิกเร็ว (Heartbeat)", "AutoClick")
+Toggle(FarmTab, "Auto Equip", "ติดอาวุธอัตโนมัติ", "AutoEquip")
+Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมที่ตัว", "BringMobs")
+Toggle(FarmTab, "Magnet", "ดึงของทุกอย่าง", "Magnet")
+
+Section(FarmTab, "ระยะ")
 Slider(FarmTab, "Farm Distance", 5, 100, "Distance")
 Slider(FarmTab, "Bring Distance", 5, 50, "BringDistance")
 
-Section(SkillTab, "สกิล")
+Section(SkillTab, "🥋 สกิล")
 Toggle(SkillTab, "Auto Skill", "กด Z X C V F E Q R", "AutoSkill")
 Toggle(SkillTab, "Auto Haki", "ใช้ Buso อัตโนมัติ", "AutoHaki")
 Toggle(SkillTab, "Fast Attack", "ตีเร็วขึ้น", "FastAttack")
 
-Section(MiscTab, "ระบบ")
+Section(MiscTab, "⚙️ ระบบ")
 Toggle(MiscTab, "No Clip", "ทะลุกำแพง", "NoClip")
 
-Section(SetTab, "ตัวละคร")
+Section(SetTab, "🏃 ตัวละคร")
 Slider(SetTab, "WalkSpeed", 16, 500, "WalkSpeed")
 Slider(SetTab, "JumpPower", 50, 500, "JumpPower")
-Section(SetTab, "ระบบ")
-Button(SetTab, "🔄 Rejoin", "กลับเซิร์ฟเวอร์", function()
+
+Section(SetTab, "🔧 ระบบ")
+Button(SetTab, "🔄 Rejoin Server", "กลับเซิร์ฟเวอร์เดิม", function()
     TPS:Teleport(game.PlaceId, LP)
 end)
-Button(SetTab, "❌ ปิด UI", "ปิดหน้าต่าง", function()
+Button(SetTab, "❌ ปิด UI", "ปิดหน้าต่าง UI", function()
     SetUIVisible(false)
 end)
 
 -- ================== LOGO FLOATING BUTTON ==================
 FloatingBtn = Instance.new("TextButton")
-FloatingBtn.Size = UDim2.new(0, 56, 0, 56)
-FloatingBtn.Position = UDim2.new(0, -60, 0.5, -28)
-FloatingBtn.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+FloatingBtn.Size = UDim2.new(0, 60, 0, 60)
+FloatingBtn.Position = UDim2.new(0, -70, 0.5, -30)
+FloatingBtn.BackgroundColor3 = COLORS.Purple
 FloatingBtn.BorderSizePixel = 0
 FloatingBtn.Text = "R"
 FloatingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FloatingBtn.Font = Enum.Font.GothamBlack
-FloatingBtn.TextSize = 24
+FloatingBtn.TextSize = 26
 FloatingBtn.AutoButtonColor = false
 FloatingBtn.ZIndex = 999
 FloatingBtn.Parent = SG
@@ -1361,29 +1416,52 @@ FBC.Parent = FloatingBtn
 
 local FBGrad = Instance.new("UIGradient")
 FBGrad.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 100))
+    ColorSequenceKeypoint.new(0, COLORS.Purple),
+    ColorSequenceKeypoint.new(0.5, COLORS.Pink),
+    ColorSequenceKeypoint.new(1, COLORS.Cyan),
 }
 FBGrad.Rotation = 45
 FBGrad.Parent = FloatingBtn
 
+task.spawn(function()
+    local rot = 45
+    while FBGrad.Parent do
+        rot = (rot + 2) % 360
+        FBGrad.Rotation = rot
+        task.wait(0.05)
+    end
+end)
+
 local FBStroke = Instance.new("UIStroke")
-FBStroke.Color = Color3.fromRGB(255, 255, 255)
+FBStroke.Color = COLORS.Pink
 FBStroke.Thickness = 2
-FBStroke.Transparency = 0.5
+FBStroke.Transparency = 0.4
 FBStroke.Parent = FloatingBtn
 
+local FBGlow = Instance.new("ImageLabel")
+FBGlow.Size = UDim2.new(1, 40, 1, 40)
+FBGlow.Position = UDim2.new(0, -20, 0, -20)
+FBGlow.BackgroundTransparency = 1
+FBGlow.Image = "rbxassetid://4996891970"
+FBGlow.ImageColor3 = COLORS.Purple
+FBGlow.ImageTransparency = 0.3
+FBGlow.ScaleType = Enum.ScaleType.Slice
+FBGlow.SliceCenter = Rect.new(20, 20, 280, 280)
+FBGlow.ZIndex = -1
+FBGlow.Parent = FloatingBtn
+
+-- Pulse animation
 task.spawn(function()
     while FloatingBtn and FloatingBtn.Parent do
         task.wait(1.5)
         if not uiOpen then
-            TS:Create(FloatingBtn, TweenInfo.new(0.5), {
-                Size = UDim2.new(0, 64, 0, 64)
+            TS:Create(FloatingBtn, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                Size = UDim2.new(0, 70, 0, 70)
             }):Play()
-            task.wait(0.5)
+            task.wait(0.6)
             if FloatingBtn then
-                TS:Create(FloatingBtn, TweenInfo.new(0.5), {
-                    Size = UDim2.new(0, 56, 0, 56)
+                TS:Create(FloatingBtn, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                    Size = UDim2.new(0, 60, 0, 60)
                 }):Play()
             end
         end
@@ -1427,9 +1505,9 @@ UIS.InputBegan:Connect(function(i, g)
     end
 end)
 
-print("═══════════════════════════════════════")
-print("✅ Rbot v3.4 พร้อมใช้งาน!")
-print("🎯 Bring Mobs: ดึงมอนมาที่ตัว (ไม่ขึ้นฟ้า)")
-print("⚡ Fast Click: คลิกทุกเฟรม (Heartbeat)")
-print("🌍 Auto Island: ย้ายเกาะตาม Level")
-print("═══════════════════════════════════════")
+print("═══════════════════════════════════════════════")
+print("✅ Rbot Premium v4.0 - ULTIMATE EDITION")
+print("🎨 Neon Glassmorphism UI Loaded")
+print("⚡ Fast Click + Auto Quest + Auto Island")
+print("⌨️ Right Ctrl = เปิด/ปิด UI")
+print("═══════════════════════════════════════════════")
