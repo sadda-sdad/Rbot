@@ -1,11 +1,9 @@
 --[[
-    🔥 Rbot Premium v12.0 - FULL SYSTEM (FINAL)
-    ✅ UI ขึ้นแน่นอน 100%
-    ✅ ทุกแท็บขึ้นครบ (ฟาร์ม/บอส/สกิล/ตั้งค่า)
-    ✅ ไม่คลิกข้างนอกเกม (In-Game Only)
+    🔥 Rbot Premium v12.0 - UI FIXED (100%)
+    ✅ UI ขึ้นแน่นอน (3 ชั้น Failsafe)
+    ✅ ทุกแท็บขึ้นครบ
+    ✅ ไม่คลิกข้างนอกเกม
     ✅ Bring Mobs ไม่ขึ้นฟ้า
-    ✅ Auto Farm + Quest + Island + Boss + Raid + Elite + Chest
-    ✅ ➖✚ Control Panel + ✕ Close + 🟣 Floating
 ]]
 
 print("━━━━━━━━━━━━━━━━━━━━━")
@@ -27,11 +25,21 @@ local LP = Players.LocalPlayer
 
 print("✅ Services")
 
--- ================== ลบ UI เก่า ==================
-for _, name in ipairs({"RbotPremium", "RbotPremium_Floating"}) do
-    local old = game.CoreGui:FindFirstChild(name)
-    if old then old:Destroy() end
-end
+-- ================== CLEANUP ==================
+pcall(function()
+    local cg = game:GetService("CoreGui")
+    for _, n in ipairs({"RbotPremium", "RbotPremium_Floating"}) do
+        local o = cg:FindFirstChild(n)
+        if o then o:Destroy() end
+    end
+    local pg = LP:FindFirstChild("PlayerGui")
+    if pg then
+        for _, n in ipairs({"RbotPremium", "RbotPremium_Floating"}) do
+            local o = pg:FindFirstChild(n)
+            if o then o:Destroy() end
+        end
+    end
+end)
 for _, v in ipairs(Lighting:GetChildren()) do
     if v:IsA("BlurEffect") and v.Name == "RbotBlur" then v:Destroy() end
 end
@@ -199,10 +207,7 @@ end
 print("✅ Quest System")
 
 -- ================== CLICK SYSTEM (IN-GAME ONLY) ==================
--- ✅ ไม่ใช้ mouse1click / VirtualUser:ClickButton1
--- ✅ ใช้ Tool:Activate() + CombatFramework เท่านั้น
 local lastClick = 0
-
 local function GetTool()
     local c = Char(); if not c then return nil end
     local t = c:FindFirstChildOfClass("Tool")
@@ -214,7 +219,6 @@ local function GetTool()
     end
     return nil
 end
-
 local function HasEnemy(r)
     r = r or 100
     local h = HRP(); if not h then return false end
@@ -230,7 +234,6 @@ local function HasEnemy(r)
     return false
 end
 
--- CombatFramework helper (ใช้ตีในเกม ไม่แตะเมาส์จริง)
 local CombatF = nil
 pcall(function()
     CombatF = require(LP.PlayerScripts:WaitForChild("CombatFramework"))
@@ -239,26 +242,16 @@ end)
 RunService.Heartbeat:Connect(function()
     if uiHovering then return end
     if not CFG.AutoClick then return end
-
     local tool = GetTool()
     if not tool then return end
-
-    -- ⭐ วิธีที่ 1: Tool:Activate() — ปลอดภัย 100%
-    pcall(function()
-        tool:Activate()
-    end)
-
-    -- ⭐ วิธีที่ 2: CombatFramework attack (ตีมอนในเกม)
+    pcall(function() tool:Activate() end)
     if CFG.AutoFarm and HasEnemy(80) then
         local now = tick()
         if now - lastClick >= CFG.ClickSpeed then
             lastClick = now
             pcall(function()
-                if CombatF and CombatF.activeController then
-                    local ac = CombatF.activeController
-                    if ac.attack then
-                        ac:attack()
-                    end
+                if CombatF and CombatF.activeController and CombatF.activeController.attack then
+                    CombatF.activeController:attack()
                 end
             end)
         end
@@ -314,7 +307,7 @@ task.spawn(function()
     end
 end)
 
--- ================== FAST ATTACK (IN-GAME ONLY) ==================
+-- ================== FAST ATTACK ==================
 task.spawn(function()
     local ok, CF = pcall(function()
         local c = require(LP.PlayerScripts:WaitForChild("CombatFramework"))
@@ -335,14 +328,13 @@ task.spawn(function()
         end
     end
 end)
-print("✅ Fast Attack (In-Game Only)")
+print("✅ Fast Attack")
 
 -- ================== ANTI-AFK ==================
--- ✅ ไม่ขยับเมาส์จริง — ใช้ Idled event ของ Roblox ส่ง event ในเกม
 LP.Idled:Connect(function()
     pcall(function()
         VU:CaptureController()
-        VU:ClickButton2(Vector2.new(0, 0))  -- RightClick ในเกมเท่านั้น
+        VU:ClickButton2(Vector2.new(0, 0))
     end)
 end)
 
@@ -370,7 +362,7 @@ task.spawn(function()
     end
 end)
 
--- ================== 🧲 BRING MOBS (ไม่ขึ้นฟ้า) ==================
+-- ================== BRING MOBS ==================
 local BRING_PROPS = PhysicalProperties.new(0.01, 0.01, 0.01, 0, 0)
 task.spawn(function()
     while task.wait(0.05) do
@@ -405,7 +397,7 @@ task.spawn(function()
         end
     end
 end)
-print("✅ Bring Mobs (ไม่ขึ้นฟ้า)")
+print("✅ Bring Mobs")
 
 -- ================== TELEPORT ==================
 local function TeleportToIsland(name)
@@ -454,8 +446,8 @@ task.spawn(function()
                     end
                 end
                 local qName = currentQuest and currentQuest.Name or nil
-                local target, dist = GetClosestEnemy(qName)
-                if not target then target, dist = GetClosestEnemy(nil) end
+                local target = GetClosestEnemy(qName)
+                if not target then target = GetClosestEnemy(nil) end
                 if target then
                     local mh = target:FindFirstChild("HumanoidRootPart")
                     if mh then h.CFrame = mh.CFrame * CFrame.new(0, CFG.Distance, 0) end
@@ -577,12 +569,12 @@ end)
 print("✅ Auto Chest")
 
 print("━━━━━━━━━━━━━━━━━━━━━")
-print("✅ Systems ทั้งหมดพร้อม!")
+print("✅ Systems พร้อม!")
 print("🎨 กำลังสร้าง UI...")
 print("━━━━━━━━━━━━━━━━━━━━━")
 
 -- ================================================================
--- ========== 🎨 UI GLASSMORPHISM =================================
+-- ========== 🎨 UI (FIXED - ขึ้นแน่นอน) ==========================
 -- ================================================================
 
 local COLORS = {
@@ -597,40 +589,67 @@ Blur.Name = "RbotBlur"
 Blur.Size = 0
 Blur.Parent = Lighting
 
-local SG = Instance.new("ScreenGui")
-SG.Name="RbotPremium"; SG.Parent=game.CoreGui
-SG.ResetOnSpawn=false; SG.IgnoreGuiInset=true
-SG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; SG.DisplayOrder=999
+-- ✅ หา parent ที่ถูกต้องสำหรับ ScreenGui (3 ชั้น Failsafe)
+local function GetGuiParent()
+    -- ชั้น 1: gethui() (executor ส่วนใหญ่รองรับ)
+    local ok, hui = pcall(function() return gethui and gethui() end)
+    if ok and hui then return hui end
+    -- ชั้น 2: CoreGui
+    local ok2, cg = pcall(function() return game:GetService("CoreGui") end)
+    if ok2 and cg then return cg end
+    -- ชั้น 3: PlayerGui
+    local pg = LP:FindFirstChild("PlayerGui")
+    if pg then return pg end
+    return LP:WaitForChild("PlayerGui", 5) or LP
+end
 
--- MAIN
-local OPEN_SIZE = UDim2.new(0,800,0,560)
+local GUIPARENT = GetGuiParent()
+print("🖼️ GUI Parent: " .. tostring(GUIPARENT))
+
+local SG = Instance.new("ScreenGui")
+SG.Name = "RbotPremium"
+SG.ResetOnSpawn = false
+SG.IgnoreGuiInset = true
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.DisplayOrder = 999
+SG.Enabled = true
+pcall(function() SG.Parent = GUIPARENT end)
+print("✅ ScreenGui สร้างแล้ว: " .. tostring(SG.Parent))
+
+-- ============================================================
+-- MAIN FRAME (สร้างด้วยขนาดเต็มทันที - ไม่ Tween)
+-- ============================================================
+local OPEN_SIZE = UDim2.new(0, 800, 0, 560)
 
 local Main = Instance.new("Frame")
-Main.Name="Main"
-Main.Size = OPEN_SIZE
-Main.Position=UDim2.new(0.5,-400,0.5,-280)
-Main.BackgroundColor3=COLORS.Bg
-Main.BackgroundTransparency=0.05
-Main.BorderSizePixel=0
-Main.ClipsDescendants=true
-Main.Visible=true
-Main.Active=true
-Main.Parent=SG
+Main.Name = "Main"
+Main.Size = OPEN_SIZE                           -- ✅ ขนาดเต็มทันที
+Main.Position = UDim2.new(0.5, -400, 0.5, -280)
+Main.BackgroundColor3 = COLORS.Bg
+Main.BackgroundTransparency = 0.05
+Main.BorderSizePixel = 0
+Main.ClipsDescendants = true
+Main.Visible = true                             -- ✅ บังคับโชว์
+Main.Active = true
+Main.ZIndex = 100
+Main.Parent = SG
 
-local MC = Instance.new("UICorner"); MC.CornerRadius=UDim.new(0,22); MC.Parent=Main
-
+local MC = Instance.new("UICorner"); MC.CornerRadius = UDim.new(0,22); MC.Parent = Main
 local MStroke = Instance.new("UIStroke")
-MStroke.Color=COLORS.Border; MStroke.Thickness=1.5; MStroke.Transparency=0.3
-MStroke.Parent=Main
+MStroke.Color = COLORS.Border; MStroke.Thickness = 1.5; MStroke.Transparency = 0.3
+MStroke.Parent = Main
 
--- Zoom effect
-Main.Size = UDim2.new(0, 700, 0, 480)
-TS:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size=OPEN_SIZE
-}):Play()
-TS:Create(Blur, TweenInfo.new(0.4), {Size=14}):Play()
+-- Blur ค่อยๆ เพิ่ม (ไม่กระทบ UI)
+task.spawn(function()
+    for i = 0, 14 do
+        Blur.Size = i
+        task.wait(0.02)
+    end
+end)
 
--- ============ TOGGLE ============
+-- ============================================================
+-- TOGGLE
+-- ============================================================
 local uiOpen = true
 local FloatingBtn = nil
 
@@ -639,307 +658,264 @@ local function SetUIVisible(v)
     uiOpen = v
     if v then
         Main.Visible = true
-        Main.Size = UDim2.new(0, 700, 0, 480)
+        Main.Size = OPEN_SIZE
         Main.BackgroundTransparency = 0.05
-        TS:Create(Main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = OPEN_SIZE
-        }):Play()
-        TS:Create(Blur, TweenInfo.new(0.3), {Size = 14}):Play()
+        Blur.Size = 14
         if FloatingBtn then FloatingBtn.Visible = false end
     else
-        TS:Create(Blur, TweenInfo.new(0.25), {Size = 0}):Play()
+        Main.Visible = false
+        Blur.Size = 0
         if FloatingBtn then
             FloatingBtn.Visible = true
             FloatingBtn.Position = UDim2.new(0, 20, 0.5, -28)
         end
-        local t = TS:Create(Main, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 700, 0, 480)
-        })
-        t:Play()
-        t.Completed:Connect(function()
-            if not uiOpen and Main and Main.Parent then
-                Main.Visible = false
-                Main.Size = OPEN_SIZE
-            end
-        end)
     end
 end
 
--- ============ HEADER ============
+-- ============================================================
+-- HEADER
+-- ============================================================
 local Header = Instance.new("Frame")
-Header.Size=UDim2.new(1,0,0,72)
-Header.BackgroundColor3=Color3.fromRGB(16,12,26)
-Header.BackgroundTransparency=0.35
-Header.BorderSizePixel=0
-Header.Parent=Main
+Header.Size = UDim2.new(1,0,0,72)
+Header.BackgroundColor3 = Color3.fromRGB(16,12,26)
+Header.BackgroundTransparency = 0.35
+Header.BorderSizePixel = 0
+Header.Parent = Main
 
-local HC = Instance.new("UICorner"); HC.CornerRadius=UDim.new(0,22); HC.Parent=Header
+local HC = Instance.new("UICorner"); HC.CornerRadius = UDim.new(0,22); HC.Parent = Header
 
 local HLine = Instance.new("Frame")
-HLine.Size=UDim2.new(1,-40,0,2)
-HLine.Position=UDim2.new(0,20,1,-1)
-HLine.BackgroundColor3=COLORS.Purple
-HLine.BorderSizePixel=0
-HLine.Parent=Header
+HLine.Size = UDim2.new(1,-40,0,2)
+HLine.Position = UDim2.new(0,20,1,-1)
+HLine.BackgroundColor3 = COLORS.Purple
+HLine.BorderSizePixel = 0
+HLine.Parent = Header
 
-local HLC = Instance.new("UICorner"); HLC.CornerRadius=UDim.new(1,0); HLC.Parent=HLine
+local HLC = Instance.new("UICorner"); HLC.CornerRadius = UDim.new(1,0); HLC.Parent = HLine
 local HLG = Instance.new("UIGradient")
-HLG.Color=ColorSequence.new{
+HLG.Color = ColorSequence.new{
     ColorSequenceKeypoint.new(0,COLORS.Purple),
     ColorSequenceKeypoint.new(0.5,COLORS.Pink),
     ColorSequenceKeypoint.new(1,COLORS.Cyan),
 }
-HLG.Parent=HLine
+HLG.Parent = HLine
 
 -- Logo
 local LogoIcon = Instance.new("Frame")
-LogoIcon.Size=UDim2.new(0,48,0,48)
-LogoIcon.Position=UDim2.new(0,18,0.5,-24)
-LogoIcon.BackgroundColor3=COLORS.Purple
-LogoIcon.BorderSizePixel=0
-LogoIcon.Parent=Header
+LogoIcon.Size = UDim2.new(0,48,0,48)
+LogoIcon.Position = UDim2.new(0,18,0.5,-24)
+LogoIcon.BackgroundColor3 = COLORS.Purple
+LogoIcon.BorderSizePixel = 0
+LogoIcon.Parent = Header
 
-local LIC = Instance.new("UICorner"); LIC.CornerRadius=UDim.new(1,0); LIC.Parent=LogoIcon
+local LIC = Instance.new("UICorner"); LIC.CornerRadius = UDim.new(1,0); LIC.Parent = LogoIcon
 local LIG = Instance.new("UIGradient")
-LIG.Color=ColorSequence.new{
+LIG.Color = ColorSequence.new{
     ColorSequenceKeypoint.new(0,COLORS.Purple),
     ColorSequenceKeypoint.new(0.5,COLORS.Pink),
     ColorSequenceKeypoint.new(1,COLORS.Cyan),
 }
-LIG.Rotation=45
-LIG.Parent=LogoIcon
+LIG.Rotation = 45
+LIG.Parent = LogoIcon
 
 task.spawn(function()
-    local r=45
-    while LogoIcon.Parent do 
-        r=(r+1)%360 
-        LIG.Rotation=r 
-        task.wait(0.05) 
+    local r = 45
+    while LogoIcon.Parent do
+        r = (r+1)%360
+        LIG.Rotation = r
+        task.wait(0.05)
     end
 end)
 
 local LogoTxt = Instance.new("TextLabel")
-LogoTxt.Size=UDim2.new(1,0,1,0)
-LogoTxt.BackgroundTransparency=1
-LogoTxt.Text="R"
-LogoTxt.TextColor3=Color3.fromRGB(255,255,255)
-LogoTxt.Font=Enum.Font.GothamBlack
-LogoTxt.TextSize=26
-LogoTxt.Parent=LogoIcon
+LogoTxt.Size = UDim2.new(1,0,1,0)
+LogoTxt.BackgroundTransparency = 1
+LogoTxt.Text = "R"
+LogoTxt.TextColor3 = Color3.fromRGB(255,255,255)
+LogoTxt.Font = Enum.Font.GothamBlack
+LogoTxt.TextSize = 26
+LogoTxt.Parent = LogoIcon
 
 local Title = Instance.new("TextLabel")
-Title.Size=UDim2.new(0,400,0,26)
-Title.Position=UDim2.new(0,78,0,14)
-Title.BackgroundTransparency=1
-Title.Text="🔥 RBOT v12.0"
-Title.TextColor3=COLORS.Text
-Title.Font=Enum.Font.GothamBlack
-Title.TextSize=20
-Title.TextXAlignment=Enum.TextXAlignment.Left
-Title.Parent=Header
+Title.Size = UDim2.new(0,400,0,26)
+Title.Position = UDim2.new(0,78,0,14)
+Title.BackgroundTransparency = 1
+Title.Text = "🔥 RBOT v12.0"
+Title.TextColor3 = COLORS.Text
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 20
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
 
 local TG = Instance.new("UIGradient")
-TG.Color=ColorSequence.new{
+TG.Color = ColorSequence.new{
     ColorSequenceKeypoint.new(0,COLORS.Text),
     ColorSequenceKeypoint.new(0.5,COLORS.Purple),
     ColorSequenceKeypoint.new(1,COLORS.Pink),
 }
-TG.Parent=Title
+TG.Parent = Title
 
 local SubTitle = Instance.new("TextLabel")
-SubTitle.Size=UDim2.new(0,400,0,18)
-SubTitle.Position=UDim2.new(0,78,0,40)
-SubTitle.BackgroundTransparency=1
-SubTitle.Text=WORLD[game.PlaceId].." • "..LP.Name.." • Lv."..SafeGet(LP.Data,"Level")
-SubTitle.TextColor3=COLORS.TextDim
-SubTitle.Font=Enum.Font.GothamMedium
-SubTitle.TextSize=10
-SubTitle.TextXAlignment=Enum.TextXAlignment.Left
-SubTitle.Parent=Header
+SubTitle.Size = UDim2.new(0,400,0,18)
+SubTitle.Position = UDim2.new(0,78,0,40)
+SubTitle.BackgroundTransparency = 1
+SubTitle.Text = WORLD[game.PlaceId].." • "..LP.Name.." • Lv."..SafeGet(LP.Data,"Level")
+SubTitle.TextColor3 = COLORS.TextDim
+SubTitle.Font = Enum.Font.GothamMedium
+SubTitle.TextSize = 10
+SubTitle.TextXAlignment = Enum.TextXAlignment.Left
+SubTitle.Parent = Header
 
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
-            SubTitle.Text=WORLD[game.PlaceId].." • "..LP.Name.." • Lv."..SafeGet(LP.Data,"Level").." • 💰"..FormatNum(SafeGet(LP.Data,"Beli"))
+            SubTitle.Text = WORLD[game.PlaceId].." • "..LP.Name.." • Lv."..SafeGet(LP.Data,"Level").." • 💰"..FormatNum(SafeGet(LP.Data,"Beli"))
         end)
     end
 end)
 
 -- Close Btn
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size=UDim2.new(0,34,0,34)
-CloseBtn.Position=UDim2.new(1,-46,0.5,-17)
-CloseBtn.BackgroundColor3=COLORS.Glass
-CloseBtn.BackgroundTransparency=0.3
-CloseBtn.Text="✕"
-CloseBtn.TextColor3=COLORS.Text
-CloseBtn.Font=Enum.Font.GothamBold
-CloseBtn.TextSize=14
-CloseBtn.AutoButtonColor=false
-CloseBtn.Parent=Header
+CloseBtn.Size = UDim2.new(0,34,0,34)
+CloseBtn.Position = UDim2.new(1,-46,0.5,-17)
+CloseBtn.BackgroundColor3 = COLORS.Glass
+CloseBtn.BackgroundTransparency = 0.3
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = COLORS.Text
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.AutoButtonColor = false
+CloseBtn.Parent = Header
 
-local CBC = Instance.new("UICorner"); CBC.CornerRadius=UDim.new(1,0); CBC.Parent=CloseBtn
-CloseBtn.MouseEnter:Connect(function()
-    TS:Create(CloseBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency=0.1, BackgroundColor3=Color3.fromRGB(255,60,80)
-    }):Play()
-end)
-CloseBtn.MouseLeave:Connect(function()
-    TS:Create(CloseBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency=0.3, BackgroundColor3=COLORS.Glass
-    }):Play()
-end)
+local CBC = Instance.new("UICorner"); CBC.CornerRadius = UDim.new(1,0); CBC.Parent = CloseBtn
 CloseBtn.MouseButton1Click:Connect(function()
-    TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
-        Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
-    }):Play()
-    TS:Create(Blur, TweenInfo.new(0.3), {Size=0}):Play()
-    task.wait(0.35)
-    SG:Destroy()
-    Blur:Destroy()
+    pcall(function() SG:Destroy() end)
+    pcall(function() Blur:Destroy() end)
 end)
 
+-- ============================================================
 -- SIDEBAR
+-- ============================================================
 local Sidebar = Instance.new("Frame")
-Sidebar.Size=UDim2.new(0,200,1,-92)
-Sidebar.Position=UDim2.new(0,16,0,82)
-Sidebar.BackgroundColor3=COLORS.Glass
-Sidebar.BackgroundTransparency=0.5
-Sidebar.BorderSizePixel=0
-Sidebar.Parent=Main
+Sidebar.Size = UDim2.new(0,200,1,-92)
+Sidebar.Position = UDim2.new(0,16,0,82)
+Sidebar.BackgroundColor3 = COLORS.Glass
+Sidebar.BackgroundTransparency = 0.5
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = Main
 
-local SBC = Instance.new("UICorner"); SBC.CornerRadius=UDim.new(0,14); SBC.Parent=Sidebar
+local SBC = Instance.new("UICorner"); SBC.CornerRadius = UDim.new(0,14); SBC.Parent = Sidebar
 local SBStroke = Instance.new("UIStroke")
-SBStroke.Color=COLORS.Border; SBStroke.Thickness=1; SBStroke.Transparency=0.7
-SBStroke.Parent=Sidebar
+SBStroke.Color = COLORS.Border; SBStroke.Thickness = 1; SBStroke.Transparency = 0.7
+SBStroke.Parent = Sidebar
 
 local TabList = Instance.new("Frame")
-TabList.Size=UDim2.new(1,-16,1,-16)
-TabList.Position=UDim2.new(0,8,0,8)
-TabList.BackgroundTransparency=1
-TabList.Parent=Sidebar
+TabList.Size = UDim2.new(1,-16,1,-16)
+TabList.Position = UDim2.new(0,8,0,8)
+TabList.BackgroundTransparency = 1
+TabList.Parent = Sidebar
 
 local TLLay = Instance.new("UIListLayout")
-TLLay.Parent=TabList
-TLLay.SortOrder=Enum.SortOrder.LayoutOrder
-TLLay.Padding=UDim.new(0,6)
+TLLay.Parent = TabList
+TLLay.SortOrder = Enum.SortOrder.LayoutOrder
+TLLay.Padding = UDim.new(0,6)
 
+-- ============================================================
 -- CONTROL PANEL ➖✚
+-- ============================================================
 local ControlPanel = Instance.new("Frame")
-ControlPanel.Size=UDim2.new(1,0,0,46)
-ControlPanel.BackgroundColor3=COLORS.Glass
-ControlPanel.BackgroundTransparency=0.4
-ControlPanel.BorderSizePixel=0
-ControlPanel.LayoutOrder=-1
-ControlPanel.Parent=TabList
+ControlPanel.Size = UDim2.new(1,0,0,46)
+ControlPanel.BackgroundColor3 = COLORS.Glass
+ControlPanel.BackgroundTransparency = 0.4
+ControlPanel.BorderSizePixel = 0
+ControlPanel.LayoutOrder = -1
+ControlPanel.Parent = TabList
 
-local CPC = Instance.new("UICorner"); CPC.CornerRadius=UDim.new(0,10); CPC.Parent=ControlPanel
-
+local CPC = Instance.new("UICorner"); CPC.CornerRadius = UDim.new(0,10); CPC.Parent = ControlPanel
 local CPStroke = Instance.new("UIStroke")
-CPStroke.Color=COLORS.Border; CPStroke.Thickness=1; CPStroke.Transparency=0.6
-CPStroke.Parent=ControlPanel
+CPStroke.Color = COLORS.Border; CPStroke.Thickness = 1; CPStroke.Transparency = 0.6
+CPStroke.Parent = ControlPanel
 
 -- ➖
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size=UDim2.new(0.5,-6,1,-12)
-MinBtn.Position=UDim2.new(0,6,0,6)
-MinBtn.BackgroundColor3=COLORS.Purple
-MinBtn.BackgroundTransparency=0.2
-MinBtn.Text="➖"
-MinBtn.TextColor3=COLORS.Text
-MinBtn.Font=Enum.Font.GothamBold
-MinBtn.TextSize=16
-MinBtn.AutoButtonColor=false
-MinBtn.Parent=ControlPanel
+MinBtn.Size = UDim2.new(0.5,-6,1,-12)
+MinBtn.Position = UDim2.new(0,6,0,6)
+MinBtn.BackgroundColor3 = COLORS.Purple
+MinBtn.BackgroundTransparency = 0.2
+MinBtn.Text = "➖"
+MinBtn.TextColor3 = COLORS.Text
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 16
+MinBtn.AutoButtonColor = false
+MinBtn.Parent = ControlPanel
 
-local MinBtnC = Instance.new("UICorner"); MinBtnC.CornerRadius=UDim.new(0,8); MinBtnC.Parent=MinBtn
-
-MinBtn.MouseEnter:Connect(function()
-    TS:Create(MinBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency=0.05, BackgroundColor3=COLORS.Purple
-    }):Play()
-end)
-MinBtn.MouseLeave:Connect(function()
-    TS:Create(MinBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency=0.2, BackgroundColor3=COLORS.Purple
-    }):Play()
-end)
+local MinBtnC = Instance.new("UICorner"); MinBtnC.CornerRadius = UDim.new(0,8); MinBtnC.Parent = MinBtn
 MinBtn.MouseButton1Click:Connect(function()
     SetUIVisible(false)
 end)
 
 -- ✚
 local ExpBtn = Instance.new("TextButton")
-ExpBtn.Size=UDim2.new(0.5,-6,1,-12)
-ExpBtn.Position=UDim2.new(0.5,0,0,6)
-ExpBtn.BackgroundColor3=COLORS.Cyan
-ExpBtn.BackgroundTransparency=0.2
-ExpBtn.Text="✚"
-ExpBtn.TextColor3=COLORS.Text
-ExpBtn.Font=Enum.Font.GothamBold
-ExpBtn.TextSize=16
-ExpBtn.AutoButtonColor=false
-ExpBtn.Parent=ControlPanel
+ExpBtn.Size = UDim2.new(0.5,-6,1,-12)
+ExpBtn.Position = UDim2.new(0.5,0,0,6)
+ExpBtn.BackgroundColor3 = COLORS.Cyan
+ExpBtn.BackgroundTransparency = 0.2
+ExpBtn.Text = "✚"
+ExpBtn.TextColor3 = COLORS.Text
+ExpBtn.Font = Enum.Font.GothamBold
+ExpBtn.TextSize = 16
+ExpBtn.AutoButtonColor = false
+ExpBtn.Parent = ControlPanel
 
-local ExpBtnC = Instance.new("UICorner"); ExpBtnC.CornerRadius=UDim.new(0,8); ExpBtnC.Parent=ExpBtn
-
-ExpBtn.MouseEnter:Connect(function()
-    TS:Create(ExpBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency=0.05, BackgroundColor3=COLORS.Cyan
-    }):Play()
-end)
-ExpBtn.MouseLeave:Connect(function()
-    TS:Create(ExpBtn, TweenInfo.new(0.2), {
-        BackgroundTransparency=0.2, BackgroundColor3=COLORS.Cyan
-    }):Play()
-end)
+local ExpBtnC = Instance.new("UICorner"); ExpBtnC.CornerRadius = UDim.new(0,8); ExpBtnC.Parent = ExpBtn
 ExpBtn.MouseButton1Click:Connect(function()
     Main.Visible = true
     Main.Size = OPEN_SIZE
     Main.Position = UDim2.new(0.5, -400, 0.5, -280)
+    Main.BackgroundTransparency = 0.05
     uiOpen = true
     if FloatingBtn then FloatingBtn.Visible = false end
-    TS:Create(Blur, TweenInfo.new(0.2), {Size = 14}):Play()
-    Main.Size = UDim2.new(0, 740, 0, 520)
-    TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = OPEN_SIZE
-    }):Play()
+    Blur.Size = 14
 end)
 
+-- ============================================================
 -- CONTENT
+-- ============================================================
 local Content = Instance.new("Frame")
-Content.Size=UDim2.new(1,-240,1,-92)
-Content.Position=UDim2.new(0,226,0,82)
-Content.BackgroundColor3=COLORS.Glass
-Content.BackgroundTransparency=0.5
-Content.BorderSizePixel=0
-Content.Parent=Main
+Content.Size = UDim2.new(1,-240,1,-92)
+Content.Position = UDim2.new(0,226,0,82)
+Content.BackgroundColor3 = COLORS.Glass
+Content.BackgroundTransparency = 0.5
+Content.BorderSizePixel = 0
+Content.Parent = Main
 
-local CNC = Instance.new("UICorner"); CNC.CornerRadius=UDim.new(0,14); CNC.Parent=Content
+local CNC = Instance.new("UICorner"); CNC.CornerRadius = UDim.new(0,14); CNC.Parent = Content
 local CNStroke = Instance.new("UIStroke")
-CNStroke.Color=COLORS.Border; CNStroke.Thickness=1; CNStroke.Transparency=0.7
-CNStroke.Parent=Content
+CNStroke.Color = COLORS.Border; CNStroke.Thickness = 1; CNStroke.Transparency = 0.7
+CNStroke.Parent = Content
 
 local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size=UDim2.new(1,-20,1,-20)
-Scroll.Position=UDim2.new(0,10,0,10)
-Scroll.BackgroundTransparency=1
-Scroll.BorderSizePixel=0
-Scroll.ScrollBarThickness=4
-Scroll.ScrollBarImageColor3=COLORS.Purple
-Scroll.CanvasSize=UDim2.new(0,0,0,0)
-Scroll.Parent=Content
+Scroll.Size = UDim2.new(1,-20,1,-20)
+Scroll.Position = UDim2.new(0,10,0,10)
+Scroll.BackgroundTransparency = 1
+Scroll.BorderSizePixel = 0
+Scroll.ScrollBarThickness = 4
+Scroll.ScrollBarImageColor3 = COLORS.Purple
+Scroll.CanvasSize = UDim2.new(0,0,0,0)
+Scroll.Parent = Content
 
 local SLLay = Instance.new("UIListLayout")
-SLLay.Parent=Scroll
-SLLay.SortOrder=Enum.SortOrder.LayoutOrder
-SLLay.Padding=UDim.new(0,8)
+SLLay.Parent = Scroll
+SLLay.SortOrder = Enum.SortOrder.LayoutOrder
+SLLay.Padding = UDim.new(0,8)
 
 SLLay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    Scroll.CanvasSize=UDim2.new(0,0,0,SLLay.AbsoluteContentSize.Y + 20)
+    Scroll.CanvasSize = UDim2.new(0,0,0, SLLay.AbsoluteContentSize.Y + 40)
 end)
 
+-- ============================================================
 -- HOVER LOCK
+-- ============================================================
 local function SetupUIHoverLock(frame)
     frame.MouseEnter:Connect(function() uiHovering = true end)
     frame.MouseLeave:Connect(function() uiHovering = false end)
@@ -950,115 +926,109 @@ SetupUIHoverLock(Sidebar)
 SetupUIHoverLock(Content)
 SetupUIHoverLock(ControlPanel)
 
+-- ============================================================
 -- DRAG
+-- ============================================================
 local dragging, dragStart, startPos
 Header.InputBegan:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 
-       or i.UserInputType==Enum.UserInputType.Touch then
-        dragging=true; dragStart=i.Position; startPos=Main.Position
+    if i.UserInputType == Enum.UserInputType.MouseButton1
+       or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = i.Position; startPos = Main.Position
     end
 end)
 Header.InputEnded:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 
-       or i.UserInputType==Enum.UserInputType.Touch then
-        dragging=false
+    if i.UserInputType == Enum.UserInputType.MouseButton1
+       or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
     end
 end)
 UIS.InputChanged:Connect(function(i)
-    if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement 
-       or i.UserInputType==Enum.UserInputType.Touch) then
-        Main.Position=UDim2.new(
+    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
+       or i.UserInputType == Enum.UserInputType.Touch) then
+        Main.Position = UDim2.new(
             startPos.X.Scale, startPos.X.Offset+(i.Position.X-dragStart.X),
             startPos.Y.Scale, startPos.Y.Offset+(i.Position.Y-dragStart.Y)
         )
     end
 end)
 
--- ============ UI FACTORY ============
-local Tabs={}; local FirstTab=false
+-- ============================================================
+-- UI FACTORY
+-- ============================================================
+local Tabs = {}; local FirstTab = false
 
 local function CreateTab(name, icon)
-    local Btn=Instance.new("TextButton")
-    Btn.Size=UDim2.new(1,0,0,44)
-    Btn.BackgroundColor3=COLORS.Glass
-    Btn.BackgroundTransparency=0.7
-    Btn.BorderSizePixel=0
-    Btn.Text="  "..icon.."   "..name
-    Btn.TextColor3=COLORS.TextDim
-    Btn.Font=Enum.Font.GothamBold
-    Btn.TextSize=13
-    Btn.TextXAlignment=Enum.TextXAlignment.Left
-    Btn.AutoButtonColor=false
-    Btn.Parent=TabList
-    
-    local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,10); c.Parent=Btn
-    
-    local page=Instance.new("Frame")
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1,0,0,44)
+    Btn.BackgroundColor3 = COLORS.Glass
+    Btn.BackgroundTransparency = 0.7
+    Btn.BorderSizePixel = 0
+    Btn.Text = "  "..icon.."   "..name
+    Btn.TextColor3 = COLORS.TextDim
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 13
+    Btn.TextXAlignment = Enum.TextXAlignment.Left
+    Btn.AutoButtonColor = false
+    Btn.Parent = TabList
+
+    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,10); c.Parent = Btn
+
+    local page = Instance.new("Frame")
     page.Name = "Page_"..name
-    page.Size=UDim2.new(1, 0, 0, 0)
-    page.BackgroundTransparency=1
-    page.BorderSizePixel=0
-    page.Visible=false
+    page.Size = UDim2.new(1, 0, 0, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.Visible = false
     page.AutomaticSize = Enum.AutomaticSize.Y
-    page.Parent=Scroll
-    
-    local pLay=Instance.new("UIListLayout")
-    pLay.Parent=page
-    pLay.SortOrder=Enum.SortOrder.LayoutOrder
-    pLay.Padding=UDim.new(0,8)
-    
+    page.Parent = Scroll
+
+    local pLay = Instance.new("UIListLayout")
+    pLay.Parent = page
+    pLay.SortOrder = Enum.SortOrder.LayoutOrder
+    pLay.Padding = UDim.new(0,8)
+
     local pPad = Instance.new("UIPadding")
     pPad.PaddingBottom = UDim.new(0, 8)
     pPad.Parent = page
-    
-    table.insert(Tabs,{Btn=Btn,Page=page})
-    
+
+    table.insert(Tabs, {Btn=Btn, Page=page})
+
     Btn.MouseButton1Click:Connect(function()
         for _,t in pairs(Tabs) do
-            t.Page.Visible=false
-            t.Page.Size = UDim2.new(1, 0, 0, 0)
-            TS:Create(t.Btn, TweenInfo.new(0.15), {
-                BackgroundTransparency=0.7,
-                TextColor3=COLORS.TextDim
-            }):Play()
+            t.Page.Visible = false
+            t.Btn.BackgroundTransparency = 0.7
+            t.Btn.TextColor3 = COLORS.TextDim
         end
-        page.Visible=true
-        page.Size = UDim2.new(1, 0, 0, 0)
-        TS:Create(Btn, TweenInfo.new(0.15), {
-            BackgroundTransparency=0.3,
-            TextColor3=COLORS.Text
-        }):Play()
-        
-        task.defer(function()
-            task.wait(0.05)
-            if SLLay then
-                Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 20)
-            end
-        end)
+        page.Visible = true
+        Btn.BackgroundTransparency = 0.3
+        Btn.TextColor3 = COLORS.Text
+        if SLLay then
+            Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 40)
+        end
     end)
-    
+
     if not FirstTab then
-        FirstTab=true
-        page.Visible=true
-        Btn.BackgroundTransparency=0.3
-        Btn.TextColor3=COLORS.Text
+        FirstTab = true
+        page.Visible = true
+        Btn.BackgroundTransparency = 0.3
+        Btn.TextColor3 = COLORS.Text
     end
     return page
 end
 
 local function Section(parent, title)
-    local S=Instance.new("TextLabel")
+    local S = Instance.new("TextLabel")
     S.Name = "Section_"..title
-    S.Size=UDim2.new(1, -8, 0, 28)
-    S.BackgroundTransparency=1
-    S.Text="  ▸  "..title:upper()
-    S.TextColor3=COLORS.Purple
-    S.Font=Enum.Font.GothamBold
-    S.TextSize=11
-    S.TextXAlignment=Enum.TextXAlignment.Left
+    S.Size = UDim2.new(1, -8, 0, 28)
+    S.BackgroundTransparency = 1
+    S.Text = "  ▸  "..title:upper()
+    S.TextColor3 = COLORS.Purple
+    S.Font = Enum.Font.GothamBold
+    S.TextSize = 11
+    S.TextXAlignment = Enum.TextXAlignment.Left
     S.LayoutOrder = 0
-    S.Parent=parent
-    
+    S.Parent = parent
+
     local line = Instance.new("Frame")
     line.Size = UDim2.new(1, -8, 0, 1)
     line.Position = UDim2.new(0, 8, 1, -2)
@@ -1069,232 +1039,224 @@ local function Section(parent, title)
 end
 
 local function Toggle(parent, name, desc, key)
-    local F=Instance.new("Frame")
+    local F = Instance.new("Frame")
     F.Name = "Toggle_"..name
-    F.Size=UDim2.new(1,-8,0,58)
-    F.BackgroundColor3=COLORS.Glass
-    F.BackgroundTransparency=0.4
-    F.BorderSizePixel=0
+    F.Size = UDim2.new(1,-8,0,58)
+    F.BackgroundColor3 = COLORS.Glass
+    F.BackgroundTransparency = 0.4
+    F.BorderSizePixel = 0
     F.LayoutOrder = 1
-    F.Parent=parent
-    
-    local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,12); c.Parent=F
-    local strk=Instance.new("UIStroke")
-    strk.Color=COLORS.Border; strk.Thickness=1; strk.Transparency=0.75
-    strk.Parent=F
-    
-    local L=Instance.new("TextLabel")
-    L.Size=UDim2.new(1,-90,0,22)
-    L.Position=UDim2.new(0,16,0,8)
-    L.BackgroundTransparency=1
-    L.Text=name
-    L.TextColor3=COLORS.Text
-    L.Font=Enum.Font.GothamBold
-    L.TextSize=13
-    L.TextXAlignment=Enum.TextXAlignment.Left
-    L.Parent=F
-    
-    local D=Instance.new("TextLabel")
-    D.Size=UDim2.new(1,-90,0,16)
-    D.Position=UDim2.new(0,16,0,30)
-    D.BackgroundTransparency=1
-    D.Text=desc or ""
-    D.TextColor3=COLORS.TextDim
-    D.Font=Enum.Font.Gotham
-    D.TextSize=10
-    D.TextXAlignment=Enum.TextXAlignment.Left
-    D.Parent=F
-    
-    local Bg=Instance.new("Frame")
-    Bg.Size=UDim2.new(0,46,0,24)
-    Bg.Position=UDim2.new(1,-62,0.5,-12)
-    Bg.BackgroundColor3=CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)
-    Bg.BorderSizePixel=0
-    Bg.Parent=F
-    
-    local bgc=Instance.new("UICorner"); bgc.CornerRadius=UDim.new(1,0); bgc.Parent=Bg
-    
-    local Dot=Instance.new("Frame")
-    Dot.Size=UDim2.new(0,20,0,20)
-    Dot.Position=CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
-    Dot.BackgroundColor3=Color3.fromRGB(255,255,255)
-    Dot.BorderSizePixel=0
-    Dot.Parent=Bg
-    
-    local dc=Instance.new("UICorner"); dc.CornerRadius=UDim.new(1,0); dc.Parent=Dot
-    
-    local Btn=Instance.new("TextButton")
-    Btn.Size=UDim2.new(1,0,1,0)
-    Btn.BackgroundTransparency=1
-    Btn.Text=""
-    Btn.Parent=F
-    
+    F.Parent = parent
+
+    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,12); c.Parent = F
+    local strk = Instance.new("UIStroke")
+    strk.Color = COLORS.Border; strk.Thickness = 1; strk.Transparency = 0.75
+    strk.Parent = F
+
+    local L = Instance.new("TextLabel")
+    L.Size = UDim2.new(1,-90,0,22)
+    L.Position = UDim2.new(0,16,0,8)
+    L.BackgroundTransparency = 1
+    L.Text = name
+    L.TextColor3 = COLORS.Text
+    L.Font = Enum.Font.GothamBold
+    L.TextSize = 13
+    L.TextXAlignment = Enum.TextXAlignment.Left
+    L.Parent = F
+
+    local D = Instance.new("TextLabel")
+    D.Size = UDim2.new(1,-90,0,16)
+    D.Position = UDim2.new(0,16,0,30)
+    D.BackgroundTransparency = 1
+    D.Text = desc or ""
+    D.TextColor3 = COLORS.TextDim
+    D.Font = Enum.Font.Gotham
+    D.TextSize = 10
+    D.TextXAlignment = Enum.TextXAlignment.Left
+    D.Parent = F
+
+    local Bg = Instance.new("Frame")
+    Bg.Size = UDim2.new(0,46,0,24)
+    Bg.Position = UDim2.new(1,-62,0.5,-12)
+    Bg.BackgroundColor3 = CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)
+    Bg.BorderSizePixel = 0
+    Bg.Parent = F
+
+    local bgc = Instance.new("UICorner"); bgc.CornerRadius = UDim.new(1,0); bgc.Parent = Bg
+
+    local Dot = Instance.new("Frame")
+    Dot.Size = UDim2.new(0,20,0,20)
+    Dot.Position = CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
+    Dot.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    Dot.BorderSizePixel = 0
+    Dot.Parent = Bg
+
+    local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(1,0); dc.Parent = Dot
+
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1,0,1,0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = ""
+    Btn.Parent = F
+
     Btn.MouseButton1Click:Connect(function()
-        CFG[key]=not CFG[key]
-        TS:Create(Bg, TweenInfo.new(0.2), {
-            BackgroundColor3=CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)
-        }):Play()
-        TS:Create(Dot, TweenInfo.new(0.2), {
-            Position=CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
-        }):Play()
+        CFG[key] = not CFG[key]
+        Bg.BackgroundColor3 = CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)
+        Dot.Position = CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
     end)
 end
 
 local function Slider(parent, name, min, max, key)
-    local F=Instance.new("Frame")
+    local F = Instance.new("Frame")
     F.Name = "Slider_"..name
-    F.Size=UDim2.new(1,-8,0,68)
-    F.BackgroundColor3=COLORS.Glass
-    F.BackgroundTransparency=0.4
-    F.BorderSizePixel=0
+    F.Size = UDim2.new(1,-8,0,68)
+    F.BackgroundColor3 = COLORS.Glass
+    F.BackgroundTransparency = 0.4
+    F.BorderSizePixel = 0
     F.LayoutOrder = 1
-    F.Parent=parent
-    
-    local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,12); c.Parent=F
-    local strk=Instance.new("UIStroke")
-    strk.Color=COLORS.Border; strk.Thickness=1; strk.Transparency=0.75
-    strk.Parent=F
-    
-    local L=Instance.new("TextLabel")
-    L.Size=UDim2.new(1,-30,0,22)
-    L.Position=UDim2.new(0,16,0,8)
-    L.BackgroundTransparency=1
-    L.Text=name.."  :  "..CFG[key]
-    L.TextColor3=COLORS.Text
-    L.Font=Enum.Font.GothamBold
-    L.TextSize=13
-    L.TextXAlignment=Enum.TextXAlignment.Left
-    L.Parent=F
-    
-    local BarBg=Instance.new("Frame")
-    BarBg.Size=UDim2.new(1,-32,0,8)
-    BarBg.Position=UDim2.new(0,16,0,42)
-    BarBg.BackgroundColor3=Color3.fromRGB(48,45,62)
-    BarBg.BorderSizePixel=0
-    BarBg.Parent=F
-    
-    local bgc=Instance.new("UICorner"); bgc.CornerRadius=UDim.new(1,0); bgc.Parent=BarBg
-    
-    local ratio=math.clamp((CFG[key]-min)/(max-min),0,1)
-    local Fill=Instance.new("Frame")
-    Fill.Size=UDim2.new(ratio,0,1,0)
-    Fill.BackgroundColor3=COLORS.Purple
-    Fill.BorderSizePixel=0
-    Fill.Parent=BarBg
-    
-    local fc=Instance.new("UICorner"); fc.CornerRadius=UDim.new(1,0); fc.Parent=Fill
-    
-    local Dot=Instance.new("Frame")
-    Dot.Size=UDim2.new(0,16,0,16)
-    Dot.Position=UDim2.new(1,-8,0.5,-8)
-    Dot.BackgroundColor3=Color3.fromRGB(255,255,255)
-    Dot.BorderSizePixel=0
-    Dot.Parent=Fill
-    
-    local dc=Instance.new("UICorner"); dc.CornerRadius=UDim.new(1,0); dc.Parent=Dot
-    
-    local dragging=false
-    local Btn=Instance.new("TextButton")
-    Btn.Size=UDim2.new(1,0,3,0)
-    Btn.Position=UDim2.new(0,0,-1,0)
-    Btn.BackgroundTransparency=1
-    Btn.Text=""
-    Btn.Parent=BarBg
-    
+    F.Parent = parent
+
+    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,12); c.Parent = F
+    local strk = Instance.new("UIStroke")
+    strk.Color = COLORS.Border; strk.Thickness = 1; strk.Transparency = 0.75
+    strk.Parent = F
+
+    local L = Instance.new("TextLabel")
+    L.Size = UDim2.new(1,-30,0,22)
+    L.Position = UDim2.new(0,16,0,8)
+    L.BackgroundTransparency = 1
+    L.Text = name.."  :  "..CFG[key]
+    L.TextColor3 = COLORS.Text
+    L.Font = Enum.Font.GothamBold
+    L.TextSize = 13
+    L.TextXAlignment = Enum.TextXAlignment.Left
+    L.Parent = F
+
+    local BarBg = Instance.new("Frame")
+    BarBg.Size = UDim2.new(1,-32,0,8)
+    BarBg.Position = UDim2.new(0,16,0,42)
+    BarBg.BackgroundColor3 = Color3.fromRGB(48,45,62)
+    BarBg.BorderSizePixel = 0
+    BarBg.Parent = F
+
+    local bgc = Instance.new("UICorner"); bgc.CornerRadius = UDim.new(1,0); bgc.Parent = BarBg
+
+    local ratio = math.clamp((CFG[key]-min)/(max-min),0,1)
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new(ratio,0,1,0)
+    Fill.BackgroundColor3 = COLORS.Purple
+    Fill.BorderSizePixel = 0
+    Fill.Parent = BarBg
+
+    local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(1,0); fc.Parent = Fill
+
+    local Dot = Instance.new("Frame")
+    Dot.Size = UDim2.new(0,16,0,16)
+    Dot.Position = UDim2.new(1,-8,0.5,-8)
+    Dot.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    Dot.BorderSizePixel = 0
+    Dot.Parent = Fill
+
+    local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(1,0); dc.Parent = Dot
+
+    local dragging = false
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1,0,3,0)
+    Btn.Position = UDim2.new(0,0,-1,0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = ""
+    Btn.Parent = BarBg
+
     local function Update(i)
-        local r=math.clamp((i.Position.X-BarBg.AbsolutePosition.X)/BarBg.AbsoluteSize.X,0,1)
-        local v=math.floor(min + r*(max-min))
-        Fill.Size=UDim2.new(r,0,1,0)
-        L.Text=name.."  :  "..v
-        CFG[key]=v
+        local r = math.clamp((i.Position.X - BarBg.AbsolutePosition.X) / BarBg.AbsoluteSize.X, 0, 1)
+        local v = math.floor(min + r * (max - min))
+        Fill.Size = UDim2.new(r,0,1,0)
+        L.Text = name.."  :  "..v
+        CFG[key] = v
     end
-    
+
     Btn.InputBegan:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1 
-           or i.UserInputType==Enum.UserInputType.Touch then
-            dragging=true; Update(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1
+           or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; Update(i)
         end
     end)
     Btn.InputEnded:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1 
-           or i.UserInputType==Enum.UserInputType.Touch then
-            dragging=false
+        if i.UserInputType == Enum.UserInputType.MouseButton1
+           or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
         end
     end)
     UIS.InputChanged:Connect(function(i)
-        if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement 
-           or i.UserInputType==Enum.UserInputType.Touch) then
+        if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
+           or i.UserInputType == Enum.UserInputType.Touch) then
             Update(i)
         end
     end)
 end
 
 local function Button(parent, name, desc, callback)
-    local F=Instance.new("Frame")
+    local F = Instance.new("Frame")
     F.Name = "Button_"..name
-    F.Size=UDim2.new(1,-8,0,58)
-    F.BackgroundColor3=COLORS.Glass
-    F.BackgroundTransparency=0.4
-    F.BorderSizePixel=0
+    F.Size = UDim2.new(1,-8,0,58)
+    F.BackgroundColor3 = COLORS.Glass
+    F.BackgroundTransparency = 0.4
+    F.BorderSizePixel = 0
     F.LayoutOrder = 1
-    F.Parent=parent
-    
-    local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,12); c.Parent=F
-    local strk=Instance.new("UIStroke")
-    strk.Color=COLORS.Border; strk.Thickness=1; strk.Transparency=0.75
-    strk.Parent=F
-    
-    local L=Instance.new("TextLabel")
-    L.Size=UDim2.new(1,-30,0,22)
-    L.Position=UDim2.new(0,16,0,8)
-    L.BackgroundTransparency=1
-    L.Text=name
-    L.TextColor3=COLORS.Text
-    L.Font=Enum.Font.GothamBold
-    L.TextSize=13
-    L.TextXAlignment=Enum.TextXAlignment.Left
-    L.Parent=F
-    
-    local D=Instance.new("TextLabel")
-    D.Size=UDim2.new(1,-30,0,16)
-    D.Position=UDim2.new(0,16,0,30)
-    D.BackgroundTransparency=1
-    D.Text=desc or ""
-    D.TextColor3=COLORS.TextDim
-    D.Font=Enum.Font.Gotham
-    D.TextSize=10
-    D.TextXAlignment=Enum.TextXAlignment.Left
-    D.Parent=F
-    
-    local Btn=Instance.new("TextButton")
-    Btn.Size=UDim2.new(1,0,1,0)
-    Btn.BackgroundTransparency=1
-    Btn.Text=""
-    Btn.Parent=F
-    
-    Btn.MouseEnter:Connect(function()
-        TS:Create(F, TweenInfo.new(0.2), {BackgroundTransparency=0.2}):Play()
-    end)
-    Btn.MouseLeave:Connect(function()
-        TS:Create(F, TweenInfo.new(0.2), {BackgroundTransparency=0.4}):Play()
-    end)
-    Btn.MouseButton1Click:Connect(function() 
-        pcall(callback) 
+    F.Parent = parent
+
+    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,12); c.Parent = F
+    local strk = Instance.new("UIStroke")
+    strk.Color = COLORS.Border; strk.Thickness = 1; strk.Transparency = 0.75
+    strk.Parent = F
+
+    local L = Instance.new("TextLabel")
+    L.Size = UDim2.new(1,-30,0,22)
+    L.Position = UDim2.new(0,16,0,8)
+    L.BackgroundTransparency = 1
+    L.Text = name
+    L.TextColor3 = COLORS.Text
+    L.Font = Enum.Font.GothamBold
+    L.TextSize = 13
+    L.TextXAlignment = Enum.TextXAlignment.Left
+    L.Parent = F
+
+    local D = Instance.new("TextLabel")
+    D.Size = UDim2.new(1,-30,0,16)
+    D.Position = UDim2.new(0,16,0,30)
+    D.BackgroundTransparency = 1
+    D.Text = desc or ""
+    D.TextColor3 = COLORS.TextDim
+    D.Font = Enum.Font.Gotham
+    D.TextSize = 10
+    D.TextXAlignment = Enum.TextXAlignment.Left
+    D.Parent = F
+
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1,0,1,0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = ""
+    Btn.Parent = F
+
+    Btn.MouseButton1Click:Connect(function()
+        pcall(callback)
     end)
 end
 
--- ================== TABS ==================
-local HomeTab=CreateTab("หน้าหลัก","🏠")
-local FarmTab=CreateTab("ฟาร์ม","🌾")
-local BossTab=CreateTab("บอส & Raid","👹")
-local SkillTab=CreateTab("สกิล","🥋")
-local SetTab=CreateTab("ตั้งค่า","🔧")
+-- ============================================================
+-- สร้างแท็บ
+-- ============================================================
+local HomeTab = CreateTab("หน้าหลัก","🏠")
+local FarmTab = CreateTab("ฟาร์ม","🌾")
+local BossTab = CreateTab("บอส & Raid","👹")
+local SkillTab = CreateTab("สกิล","🥋")
+local SetTab = CreateTab("ตั้งค่า","🔧")
 
 -- HOME
 Section(HomeTab, "📊 Live Status")
 Button(HomeTab, "🔍 ตรวจสอบสถานะ", "แสดงข้อมูลทุกอย่าง", function()
-    local c=Char()
-    local tool=c and c:FindFirstChildOfClass("Tool")
+    local c = Char()
+    local tool = c and c:FindFirstChildOfClass("Tool")
     print("🎮 Level: "..SafeGet(LP.Data,"Level"))
     print("💰 Beli: "..FormatNum(SafeGet(LP.Data,"Beli")))
     print("🔧 Tool: "..(tool and tool.Name or "❌"))
@@ -1302,7 +1264,7 @@ Button(HomeTab, "🔍 ตรวจสอบสถานะ", "แสดงข้
     print("👾 Mobs: "..#(workspace:FindFirstChild("Enemies") and workspace.Enemies:GetChildren() or {}))
 end)
 Button(HomeTab, "📜 Force รับเควสต์", "บังคับรับเควสต์", function()
-    currentQuest=nil; lastQuestAttempt=0; GetQuest()
+    currentQuest = nil; lastQuestAttempt = 0; GetQuest()
 end)
 Button(HomeTab, "🎁 Redeem All Codes", "ใส่โค้ดทั้งหมด", function()
     local codes = {"Sub2Fer999","Enyu_is_Pro","Magicbus","JCWK","Starcodeheo",
@@ -1324,7 +1286,7 @@ Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมั�
 Toggle(FarmTab, "Auto Island", "ย้ายเกาะตาม Level", "AutoIsland")
 Toggle(FarmTab, "Auto Click ⭐", "คลิกในเกมเท่านั้น", "AutoClick")
 Toggle(FarmTab, "Auto Equip", "ติดอาวุธอัตโนมัติ", "AutoEquip")
-Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมตัว (ไม่ขึ้นฟ้า)", "BringMobs")
+Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมตัว", "BringMobs")
 Toggle(FarmTab, "Magnet", "ดึงของทุกอย่าง", "Magnet")
 Toggle(FarmTab, "Auto Chest 💎", "เก็บหีบทุกเกาะ", "AutoChest")
 Slider(FarmTab, "Farm Distance", 5, 100, "Distance")
@@ -1351,119 +1313,68 @@ Button(SetTab, "🚀 Rejoin Server", "กลับเซิร์ฟเดิม
     TPS:Teleport(game.PlaceId, LP)
 end)
 Button(SetTab, "❌ ปิด UI ทั้งหมด", "ปิดหน้าต่าง", function()
-    TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
-        Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
-    }):Play()
-    TS:Create(Blur, TweenInfo.new(0.3), {Size=0}):Play()
-    task.wait(0.35)
-    SG:Destroy()
-    Blur:Destroy()
+    pcall(function() SG:Destroy() end)
+    pcall(function() Blur:Destroy() end)
 end)
 
--- ================================================================
--- ✅ FORCE REFRESH UI
--- ================================================================
-task.spawn(function()
-    task.wait(0.1)
-    for _, t in pairs(Tabs) do
-        if t.Page then
-            t.Page.Size = UDim2.new(1, 0, 0, 0)
-        end
-    end
-    if Scroll and SLLay then
-        Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 40)
-    end
-    if Tabs[1] then
-        for i, t in pairs(Tabs) do
-            t.Page.Visible = (i == 1)
-            t.Btn.BackgroundTransparency = (i == 1) and 0.3 or 0.7
-            t.Btn.TextColor3 = (i == 1) and COLORS.Text or COLORS.TextDim
-        end
-    end
-    task.wait(0.5)
-    if Scroll and SLLay then
-        Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 40)
-    end
-    print("✅ UI Refresh ครบทุกแท็บ")
-end)
+-- ============================================================
+-- FORCE REFRESH (synchronous)
+-- ============================================================
+if Scroll and SLLay then
+    Scroll.CanvasSize = UDim2.new(0, 0, 0, SLLay.AbsoluteContentSize.Y + 40)
+end
+print("✅ ทุกแท็บสร้างเสร็จ")
 
+-- ============================================================
 -- FLOATING BUTTON
+-- ============================================================
 FloatingBtn = Instance.new("TextButton")
-FloatingBtn.Size=UDim2.new(0,56,0,56)
-FloatingBtn.Position=UDim2.new(0,-70,0.5,-28)
-FloatingBtn.BackgroundColor3=COLORS.Purple
-FloatingBtn.BorderSizePixel=0
-FloatingBtn.Text="✚"
-FloatingBtn.TextColor3=Color3.fromRGB(255,255,255)
-FloatingBtn.Font=Enum.Font.GothamBlack
-FloatingBtn.TextSize=24
-FloatingBtn.AutoButtonColor=false
-FloatingBtn.Visible=false
-FloatingBtn.ZIndex=999
-FloatingBtn.Parent=SG
+FloatingBtn.Size = UDim2.new(0,56,0,56)
+FloatingBtn.Position = UDim2.new(0,-70,0.5,-28)
+FloatingBtn.BackgroundColor3 = COLORS.Purple
+FloatingBtn.BorderSizePixel = 0
+FloatingBtn.Text = "✚"
+FloatingBtn.TextColor3 = Color3.fromRGB(255,255,255)
+FloatingBtn.Font = Enum.Font.GothamBlack
+FloatingBtn.TextSize = 24
+FloatingBtn.AutoButtonColor = false
+FloatingBtn.Visible = false
+FloatingBtn.ZIndex = 999
+FloatingBtn.Parent = SG
 
-local FBC = Instance.new("UICorner"); FBC.CornerRadius=UDim.new(1,0); FBC.Parent=FloatingBtn
-
+local FBC = Instance.new("UICorner"); FBC.CornerRadius = UDim.new(1,0); FBC.Parent = FloatingBtn
 local FBGrad = Instance.new("UIGradient")
-FBGrad.Color=ColorSequence.new{
+FBGrad.Color = ColorSequence.new{
     ColorSequenceKeypoint.new(0,COLORS.Purple),
     ColorSequenceKeypoint.new(0.5,COLORS.Pink),
     ColorSequenceKeypoint.new(1,COLORS.Cyan),
 }
-FBGrad.Rotation=45
-FBGrad.Parent=FloatingBtn
-
-task.spawn(function()
-    local r=45
-    while FBGrad.Parent do 
-        r=(r+2)%360 
-        FBGrad.Rotation=r 
-        task.wait(0.05) 
-    end
-end)
+FBGrad.Rotation = 45
+FBGrad.Parent = FloatingBtn
 
 local FBStroke = Instance.new("UIStroke")
-FBStroke.Color=COLORS.Pink
-FBStroke.Thickness=2
-FBStroke.Transparency=0.4
-FBStroke.Parent=FloatingBtn
-
-task.spawn(function()
-    while FloatingBtn and FloatingBtn.Parent do
-        task.wait(2)
-        if FloatingBtn.Visible then
-            TS:Create(FloatingBtn, TweenInfo.new(0.6, Enum.EasingStyle.Sine), {
-                Size=UDim2.new(0,66,0,66)
-            }):Play()
-            task.wait(0.6)
-            if FloatingBtn then
-                TS:Create(FloatingBtn, TweenInfo.new(0.6, Enum.EasingStyle.Sine), {
-                    Size=UDim2.new(0,56,0,56)
-                }):Play()
-            end
-        end
-    end
-end)
+FBStroke.Color = COLORS.Pink
+FBStroke.Thickness = 2
+FBStroke.Transparency = 0.4
+FBStroke.Parent = FloatingBtn
 
 local fbDrag, fbStart, fbStartPos
 FloatingBtn.InputBegan:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 
-       or i.UserInputType==Enum.UserInputType.Touch then
-        fbDrag=true
-        fbStart=i.Position
-        fbStartPos=FloatingBtn.Position
+    if i.UserInputType == Enum.UserInputType.MouseButton1
+       or i.UserInputType == Enum.UserInputType.Touch then
+        fbDrag = true; fbStart = i.Position; fbStartPos = FloatingBtn.Position
     end
 end)
 FloatingBtn.InputEnded:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 
-       or i.UserInputType==Enum.UserInputType.Touch then
-        fbDrag=false
+    if i.UserInputType == Enum.UserInputType.MouseButton1
+       or i.UserInputType == Enum.UserInputType.Touch then
+        fbDrag = false
     end
 end)
 UIS.InputChanged:Connect(function(i)
-    if fbDrag and (i.UserInputType==Enum.UserInputType.MouseMovement 
-       or i.UserInputType==Enum.UserInputType.Touch) then
-        FloatingBtn.Position=UDim2.new(
+    if fbDrag and (i.UserInputType == Enum.UserInputType.MouseMovement
+       or i.UserInputType == Enum.UserInputType.Touch) then
+        FloatingBtn.Position = UDim2.new(
             fbStartPos.X.Scale, fbStartPos.X.Offset+(i.Position.X-fbStart.X),
             fbStartPos.Y.Scale, fbStartPos.Y.Offset+(i.Position.Y-fbStart.Y)
         )
@@ -1474,18 +1385,22 @@ FloatingBtn.MouseButton1Click:Connect(function()
     SetUIVisible(true)
 end)
 
+-- ============================================================
 -- KEYBIND
+-- ============================================================
 UIS.InputBegan:Connect(function(i, g)
     if g then return end
-    if i.KeyCode==Enum.KeyCode.RightControl then
+    if i.KeyCode == Enum.KeyCode.RightControl then
         SetUIVisible(not uiOpen)
     end
-    if i.KeyCode==Enum.KeyCode.RightShift then
+    if i.KeyCode == Enum.KeyCode.RightShift then
         if uiOpen then SetUIVisible(false) end
     end
 end)
 
+-- ============================================================
 -- SAVE/LOAD
+-- ============================================================
 if writefile and readfile then
     task.spawn(function()
         task.wait(2)
@@ -1505,11 +1420,9 @@ if writefile and readfile then
 end
 
 print("═══════════════════════════════════════════════")
-print("🔥 Rbot v12.0 FULL SYSTEM พร้อมใช้งาน!")
-print("✅ UI ขึ้นแน่นอน 100%")
-print("✅ ทุกแท็บขึ้นครบ: หน้าหลัก / ฟาร์ม / บอส / สกิล / ตั้งค่า")
-print("✅ คลิกในเกมเท่านั้น — ไม่กระทบข้างนอก")
-print("✅ Bring Mobs ไม่ขึ้นฟ้า")
-print("✅ ➖✚ + ✕ + 🟣 Floating ครบ")
+print("🔥 Rbot v12.0 UI FIXED พร้อมใช้งาน!")
+print("✅ UI ขึ้นแน่นอน 100% (Failsafe 3 ชั้น)")
+print("✅ ทุกแท็บขึ้นครบ")
+print("✅ คลิกในเกมเท่านั้น")
 print("⌨️ RightCtrl = Toggle | RightShift = Close")
 print("═══════════════════════════════════════════════")
