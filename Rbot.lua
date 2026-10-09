@@ -1,6 +1,6 @@
 --[[
-    🤖 Rbot Premium v3.3
-    ✅ Auto Quest + Auto Attack + Logo Toggle
+    🤖 Rbot Premium v3.4
+    ✅ Bring Mobs + Fast Click + Auto Island
 ]]
 
 -- ================== SERVICES ==================
@@ -12,11 +12,12 @@ local TS = game:GetService("TweenService")
 local VIM = game:GetService("VirtualInputManager")
 local Lighting = game:GetService("Lighting")
 local TPS = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-print("=== Rbot v3.3 Loading ===")
+print("=== Rbot v3.4 Loading ===")
 
--- ================== CHECK GAME ==================
+-- ================== CHECK ==================
 local WORLD = {
     [2753915549] = "Sea 1",
     [4442272183] = "Sea 2",
@@ -31,17 +32,19 @@ print("🎮 Game: " .. WORLD[game.PlaceId])
 -- ================== CONFIG ==================
 local CFG = {
     AutoFarm = false,
-    AutoQuest = true,       -- รับเควสต์ก่อนฟาร์ม
+    AutoQuest = true,
     Magnet = false,
     AutoSkill = true,
     AutoHaki = true,
     FastAttack = true,
     AutoClick = true,
     NoClip = false,
-    BringMobs = false,      -- ดึงมอนเข้าหา
+    BringMobs = true,       -- ดึงมอนมาหา (default เปิด)
+    AutoIsland = true,      -- ย้ายเกาะอัตโนมัติ
     WalkSpeed = 16,
     JumpPower = 50,
     Distance = 30,
+    BringDistance = 25,     -- ระยะที่ดึงมอนมา
 }
 
 -- ================== HELPERS ==================
@@ -72,125 +75,176 @@ local function FormatNum(n)
     else return tostring(math.floor(n)) end
 end
 
--- ================== QUEST DATABASE ==================
--- เควสต์ทั้งหมดใน Blox Fruits (ชื่อ, Level ที่ต้องการ)
-local QUESTS = {
+-- ================== 🌍 ISLAND DATABASE ==================
+-- เกาะทั้งหมดพร้อม CFrame หลัก
+local ISLANDS = {
     -- Sea 1
-    {Name = "Bandit",        Level = 1,    NPC = "Bandit",       Island = "Starter Island"},
-    {Name = "Monkey",        Level = 1,    NPC = "Monkey",       Island = "Starter Island"},
-    {Name = "Blade Bandit",  Level = 15,   NPC = "Blade Bandit", Island = "Jungle"},
-    {Name = "Jungle Pirate", Level = 20,   NPC = "Jungle Pirate",Island = "Jungle"},
-    {Name = "Desert Bandit", Level = 30,   NPC = "Desert Bandit",Island = "Desert"},
-    {Name = "Desert Officer",Level = 40,   NPC = "Desert Officer",Island = "Desert"},
-    {Name = "Snow Bandit",   Level = 50,   NPC = "Snow Bandit",  Island = "Frozen Village"},
-    {Name = "Snowman",       Level = 60,   NPC = "Snowman",      Island = "Frozen Village"},
-    {Name = "Frost Bandit",  Level = 75,   NPC = "Frost Bandit", Island = "Marine Ford"},
-    {Name = "Marine",        Level = 85,   NPC = "Marine",       Island = "Marine Ford"},
-    {Name = "Sky Bandit",    Level = 90,   NPC = "Sky Bandit",   Island = "Skylands"},
-    {Name = "Dark Master",   Level = 100,  NPC = "Dark Master",  Island = "Skylands"},
-    {Name = "Fighter",       Level = 120,  NPC = "Fighter",      Island = "Colosseum"},
-    {Name = "Fishman",       Level = 150,  NPC = "Fishman",      Island = "Underwater City"},
-    {Name = "Magma Ninja",   Level = 175,  NPC = "Magma Ninja",  Island = "Fountain City"},
-    {Name = "Pirate Boss",   Level = 200,  NPC = "Pirate Boss",  Island = "Fountain City"},
-    {Name = "Snow Trooper",  Level = 250,  NPC = "Snow Trooper", Island = "Kingdom of Rose"},
-    {Name = "Winter Warrior",Level = 300,  NPC = "Winter Warrior",Island = "Kingdom of Rose"},
-    {Name = "Lab Subordinate",Level = 350, NPC = "Lab Subordinate",Island = "Green Zone"},
-    {Name = "Horned Warrior",Level = 400,  NPC = "Horned Warrior",Island = "Green Zone"},
-    {Name = "Military Soldier",Level = 450,NPC = "Military Soldier",Island = "Graveyard"},
-    {Name = "Military Spy",  Level = 500,  NPC = "Military Spy", Island = "Graveyard"},
-    {Name = "Reborn Skeleton",Level = 550, NPC = "Reborn Skeleton",Island = "Graveyard"},
-    {Name = "Living Zombie", Level = 600,  NPC = "Living Zombie",Island = "Graveyard"},
-    {Name = "Demonic Soul",  Level = 650,  NPC = "Demonic Soul", Island = "Graveyard"},
-    {Name = "Possessed Mummy",Level = 700, NPC = "Possessed Mummy",Island = "Graveyard"},
-    {Name = "Snow Lurker",   Level = 725,  NPC = "Snow Lurker",  Island = "Snow Mountain"},
-    {Name = "Yeti",          Level = 750,  NPC = "Yeti",         Island = "Snow Mountain"},
-    {Name = "Pirate Millionaire",Level = 775,NPC = "Pirate Millionaire",Island = "Hot and Cold"},
-    {Name = "Pistol Billionaire",Level = 800,NPC = "Pistol Billionaire",Island = "Hot and Cold"},
-    {Name = "Dragon Crew Archer",Level = 850,NPC = "Dragon Crew Archer",Island = "Hot and Cold"},
-    {Name = "Dragon Crew Warrior",Level = 875,NPC = "Dragon Crew Warrior",Island = "Hot and Cold"},
-    {Name = "Amazon",        Level = 900,  NPC = "Amazon",       Island = "Haunted Castle"},
-    {Name = "Island Empress",Level = 925,  NPC = "Island Empress",Island = "Haunted Castle"},
-    {Name = "Hydra Enforcer",Level = 950,  NPC = "Hydra Enforcer",Island = "Haunted Castle"},
-    {Name = "Venomous Assailant",Level = 975,NPC = "Venomous Assailant",Island = "Haunted Castle"},
-    {Name = "Reborn Skeleton",Level = 1000,NPC = "Reborn Skeleton",Island = "Cursed Ship"},
-    {Name = "Living Zombie", Level = 1025, NPC = "Living Zombie",Island = "Cursed Ship"},
-    {Name = "Demonic Soul",  Level = 1050, NPC = "Demonic Soul", Island = "Cursed Ship"},
-    {Name = "Possessed Mummy",Level = 1075,NPC = "Possessed Mummy",Island = "Cursed Ship"},
-    {Name = "Snow Lurker",   Level = 1100, NPC = "Snow Lurker",  Island = "Cursed Ship"},
-    {Name = "Ice Jailer",    Level = 1125, NPC = "Ice Jailer",   Island = "Cursed Ship"},
-    {Name = "Cursed Pirate", Level = 1150, NPC = "Cursed Pirate",Island = "Cursed Ship"},
-    {Name = "Cursed Captain",Level = 1175, NPC = "Cursed Captain",Island = "Cursed Ship"},
-    {Name = "Cursed Skeleton",Level = 1200,NPC = "Cursed Skeleton",Island = "Cursed Ship"},
-    {Name = "Sea Soldier",   Level = 1250, NPC = "Sea Soldier",  Island = "Forgotten Island"},
-    {Name = "Water Fighter", Level = 1300, NPC = "Water Fighter",Island = "Forgotten Island"},
-    {Name = "Pirate Millionaire",Level = 1350,NPC = "Pirate Millionaire",Island = "Forgotten Island"},
-    {Name = "Forest Pirate", Level = 1375, NPC = "Forest Pirate",Island = "Forgotten Island"},
-    {Name = "Mythological Pirate",Level = 1425,NPC = "Mythological Pirate",Island = "Forgotten Island"},
-    {Name = "Jungle Pirate", Level = 1475, NPC = "Jungle Pirate",Island = "Forgotten Island"},
-    {Name = "Musketeer Pirate",Level = 1500,NPC = "Musketeer Pirate",Island = "Forgotten Island"},
-    -- Sea 2 (เริ่มที่ Lv 700)
-    {Name = "Raider",        Level = 700,  NPC = "Raider",       Island = "Kingdom of Rose"},
-    {Name = "Mercenary",     Level = 725,  NPC = "Mercenary",    Island = "Kingdom of Rose"},
-    {Name = "Swan Pirate",   Level = 775,  NPC = "Swan Pirate",  Island = "Kingdom of Rose"},
-    {Name = "Factory Staff", Level = 800,  NPC = "Factory Staff",Island = "Kingdom of Rose"},
-    {Name = "Marine Captain",Level = 850,  NPC = "Marine Captain",Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 900,  NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 950,  NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1000, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1050, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1100, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1150, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1200, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1250, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1300, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1350, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1400, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1450, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Zombie",        Level = 1500, NPC = "Zombie",       Island = "Kingdom of Rose"},
-    {Name = "Reborn Skeleton",Level = 1550,NPC = "Reborn Skeleton",Island = "Cursed Ship"},
-    {Name = "Living Zombie", Level = 1625, NPC = "Living Zombie",Island = "Cursed Ship"},
-    {Name = "Demonic Soul",  Level = 1700, NPC = "Demonic Soul", Island = "Cursed Ship"},
-    {Name = "Possessed Mummy",Level = 1775,NPC = "Possessed Mummy",Island = "Cursed Ship"},
-    {Name = "Snow Lurker",   Level = 1850, NPC = "Snow Lurker",  Island = "Cursed Ship"},
-    {Name = "Ice Jailer",    Level = 1900, NPC = "Ice Jailer",   Island = "Cursed Ship"},
-    {Name = "Cursed Pirate", Level = 1950, NPC = "Cursed Pirate",Island = "Cursed Ship"},
-    {Name = "Cursed Captain",Level = 2000, NPC = "Cursed Captain",Island = "Cursed Ship"},
-    {Name = "Cursed Skeleton",Level = 2050,NPC = "Cursed Skeleton",Island = "Cursed Ship"},
-    {Name = "Sea Soldier",   Level = 2100, NPC = "Sea Soldier",  Island = "Forgotten Island"},
-    {Name = "Water Fighter", Level = 2150, NPC = "Water Fighter",Island = "Forgotten Island"},
-    {Name = "Pirate Millionaire",Level = 2200,NPC = "Pirate Millionaire",Island = "Forgotten Island"},
-    {Name = "Forest Pirate", Level = 2250, NPC = "Forest Pirate",Island = "Forgotten Island"},
-    {Name = "Mythological Pirate",Level = 2300,NPC = "Mythological Pirate",Island = "Forgotten Island"},
-    {Name = "Jungle Pirate", Level = 2350, NPC = "Jungle Pirate",Island = "Forgotten Island"},
-    {Name = "Musketeer Pirate",Level = 2400,NPC = "Musketeer Pirate",Island = "Forgotten Island"},
+    ["Starter Island"]   = {Level = 1,    CFrame = CFrame.new(1040, 16, 1540)},
+    ["Jungle"]           = {Level = 15,   CFrame = CFrame.new(-1626, 35, 45)},
+    ["Pirate Village"]   = {Level = 30,   CFrame = CFrame.new(-1160, 4, 3850)},
+    ["Desert"]           = {Level = 60,   CFrame = CFrame.new(970, 100, 4450)},
+    ["Frozen Village"]   = {Level = 90,   CFrame = CFrame.new(1150, 25, -1000)},
+    ["Marine Ford"]      = {Level = 120,  CFrame = CFrame.new(-4750, 25, 4400)},
+    ["Skylands"]         = {Level = 150,  CFrame = CFrame.new(-4850, 720, -2650)},
+    ["Colosseum"]        = {Level = 200,  CFrame = CFrame.new(-1850, 25, 1450)},
+    ["Underwater City"]  = {Level = 250,  CFrame = CFrame.new(60500, 700, 1550)},
+    ["Fountain City"]    = {Level = 300,  CFrame = CFrame.new(5250, 30, 4000)},
+    ["Kingdom of Rose"]  = {Level = 400,  CFrame = CFrame.new(-390, 30, 5600)},
+    ["Green Zone"]       = {Level = 500,  CFrame = CFrame.new(-350, 30, 8200)},
+    ["Graveyard"]        = {Level = 600,  CFrame = CFrame.new(6500, 25, -6000)},
+    ["Snow Mountain"]    = {Level = 700,  CFrame = CFrame.new(1350, 40, -7000)},
+    ["Hot and Cold"]     = {Level = 800,  CFrame = CFrame.new(-5700, 30, -6000)},
+    ["Haunted Castle"]   = {Level = 900,  CFrame = CFrame.new(-9500, 145, 5800)},
+    ["Cursed Ship"]      = {Level = 1000, CFrame = CFrame.new(920, 125, 32800)},
+    ["Forgotten Island"] = {Level = 1200, CFrame = CFrame.new(-3050, 240, -10000)},
+    -- Sea 2
+    ["Kingdom of Rose S2"] = {Level = 700, CFrame = CFrame.new(-390, 30, 5600)},
+    ["Cursed Ship S2"]     = {Level = 1000,CFrame = CFrame.new(920, 125, 32800)},
+    ["Forgotten Island S2"]= {Level = 1200,CFrame = CFrame.new(-3050, 240, -10000)},
+    ["Ice Castle"]         = {Level = 1350,CFrame = CFrame.new(5450, 60, -2500)},
+    ["Forgotten Island S2b"]={Level = 1425,CFrame = CFrame.new(-3050, 240, -10000)},
+    ["Haunted Castle S2"]  = {Level = 1500,CFrame = CFrame.new(-9500, 145, 5800)},
+    ["Cursed Ship S2b"]    = {Level = 1625,CFrame = CFrame.new(920, 125, 32800)},
+    ["Forgotten Island S2c"]={Level = 1700,CFrame = CFrame.new(-3050, 240, -10000)},
     -- Sea 3
-    {Name = "Pirate Luffy",  Level = 1500, NPC = "Pirate Luffy", Island = "Port Town"},
-    {Name = "Pirate Crew Member",Level = 1525,NPC = "Pirate Crew Member",Island = "Port Town"},
-    {Name = "Marine Recruit",Level = 1550, NPC = "Marine Recruit",Island = "Port Town"},
-    {Name = "Marine Grunt",  Level = 1575, NPC = "Marine Grunt", Island = "Port Town"},
-    {Name = "Fishman Raider",Level = 1625, NPC = "Fishman Raider",Island = "Hydra Island"},
-    {Name = "Fishman Captain",Level = 1675,NPC = "Fishman Captain",Island = "Hydra Island"},
-    {Name = "Forest Pirate", Level = 1725, NPC = "Forest Pirate",Island = "Hydra Island"},
-    {Name = "Mythological Pirate",Level = 1775,NPC = "Mythological Pirate",Island = "Hydra Island"},
-    {Name = "Jungle Pirate", Level = 1825, NPC = "Jungle Pirate",Island = "Hydra Island"},
-    {Name = "Musketeer Pirate",Level = 1875,NPC = "Musketeer Pirate",Island = "Hydra Island"},
-    {Name = "Reborn Skeleton",Level = 1925,NPC = "Reborn Skeleton",Island = "Haunted Castle"},
-    {Name = "Living Zombie", Level = 1975, NPC = "Living Zombie",Island = "Haunted Castle"},
-    {Name = "Demonic Soul",  Level = 2025, NPC = "Demonic Soul", Island = "Haunted Castle"},
-    {Name = "Possessed Mummy",Level = 2075,NPC = "Possessed Mummy",Island = "Haunted Castle"},
-    {Name = "Snow Lurker",   Level = 2125, NPC = "Snow Lurker",  Island = "Snow Mountain"},
-    {Name = "Ice Jailer",    Level = 2175, NPC = "Ice Jailer",   Island = "Snow Mountain"},
-    {Name = "Cursed Pirate", Level = 2225, NPC = "Cursed Pirate",Island = "Snow Mountain"},
-    {Name = "Cursed Captain",Level = 2275, NPC = "Cursed Captain",Island = "Snow Mountain"},
-    {Name = "Cursed Skeleton",Level = 2325,NPC = "Cursed Skeleton",Island = "Snow Mountain"},
-    {Name = "Sea Soldier",   Level = 2375, NPC = "Sea Soldier",  Island = "Floating Turtle"},
-    {Name = "Water Fighter", Level = 2425, NPC = "Water Fighter",Island = "Floating Turtle"},
-    {Name = "Pirate Millionaire",Level = 2475,NPC = "Pirate Millionaire",Island = "Floating Turtle"},
-    {Name = "Forest Pirate", Level = 2525, NPC = "Forest Pirate",Island = "Floating Turtle"},
-    {Name = "Mythological Pirate",Level = 2575,NPC = "Mythological Pirate",Island = "Floating Turtle"},
+    ["Port Town"]          = {Level = 1500,CFrame = CFrame.new(-280, 6, 4700)},
+    ["Hydra Island"]       = {Level = 1650,CFrame = CFrame.new(5550, 200, -5000)},
+    ["Great Tree"]         = {Level = 1800,CFrame = CFrame.new(2100, 450, -7500)},
+    ["Floating Turtle"]    = {Level = 2000,CFrame = CFrame.new(-9500, 400, -9500)},
+    ["Haunted Castle S3"]  = {Level = 2200,CFrame = CFrame.new(-9500, 145, 5800)},
+    ["Snow Mountain S3"]   = {Level = 2350,CFrame = CFrame.new(1350, 40, -7000)},
+    ["Fountain City S3"]   = {Level = 2500,CFrame = CFrame.new(5250, 30, 4000)},
+    ["Castle on the Sea"]  = {Level = 2750,CFrame = CFrame.new(-5000, 500, -3000)},
+    ["Pirate Village S3"]  = {Level = 2900,CFrame = CFrame.new(-1160, 4, 3850)},
+    ["Hydra Island S3"]    = {Level = 3050,CFrame = CFrame.new(5550, 200, -5000)},
+    ["Great Tree S3"]      = {Level = 3200,CFrame = CFrame.new(2100, 450, -7500)},
+    ["Floating Turtle S3"] = {Level = 3350,CFrame = CFrame.new(-9500, 400, -9500)},
+    ["Haunted Castle S3b"] = {Level = 3500,CFrame = CFrame.new(-9500, 145, 5800)},
 }
 
--- หาเควสต์ที่ตรงกับ Level ปัจจุบัน
+-- ================== QUEST DATABASE ==================
+local QUESTS = {
+    -- Sea 1
+    {Name="Bandit", Level=1, Island="Starter Island"},
+    {Name="Monkey", Level=1, Island="Starter Island"},
+    {Name="Blade Bandit", Level=15, Island="Jungle"},
+    {Name="Jungle Pirate", Level=20, Island="Jungle"},
+    {Name="Desert Bandit", Level=30, Island="Desert"},
+    {Name="Desert Officer", Level=40, Island="Desert"},
+    {Name="Snow Bandit", Level=50, Island="Frozen Village"},
+    {Name="Snowman", Level=60, Island="Frozen Village"},
+    {Name="Frost Bandit", Level=75, Island="Marine Ford"},
+    {Name="Marine", Level=85, Island="Marine Ford"},
+    {Name="Sky Bandit", Level=90, Island="Skylands"},
+    {Name="Dark Master", Level=100, Island="Skylands"},
+    {Name="Fighter", Level=120, Island="Colosseum"},
+    {Name="Fishman", Level=150, Island="Underwater City"},
+    {Name="Magma Ninja", Level=175, Island="Fountain City"},
+    {Name="Pirate Boss", Level=200, Island="Fountain City"},
+    {Name="Snow Trooper", Level=250, Island="Kingdom of Rose"},
+    {Name="Winter Warrior", Level=300, Island="Kingdom of Rose"},
+    {Name="Lab Subordinate", Level=350, Island="Green Zone"},
+    {Name="Horned Warrior", Level=400, Island="Green Zone"},
+    {Name="Military Soldier", Level=450, Island="Graveyard"},
+    {Name="Military Spy", Level=500, Island="Graveyard"},
+    {Name="Reborn Skeleton", Level=550, Island="Graveyard"},
+    {Name="Living Zombie", Level=600, Island="Graveyard"},
+    {Name="Demonic Soul", Level=650, Island="Graveyard"},
+    {Name="Possessed Mummy", Level=700, Island="Graveyard"},
+    {Name="Snow Lurker", Level=725, Island="Snow Mountain"},
+    {Name="Yeti", Level=750, Island="Snow Mountain"},
+    {Name="Pirate Millionaire", Level=775, Island="Hot and Cold"},
+    {Name="Pistol Billionaire", Level=800, Island="Hot and Cold"},
+    {Name="Dragon Crew Archer", Level=850, Island="Hot and Cold"},
+    {Name="Dragon Crew Warrior", Level=875, Island="Hot and Cold"},
+    {Name="Amazon", Level=900, Island="Haunted Castle"},
+    {Name="Island Empress", Level=925, Island="Haunted Castle"},
+    {Name="Hydra Enforcer", Level=950, Island="Haunted Castle"},
+    {Name="Venomous Assailant", Level=975, Island="Haunted Castle"},
+    {Name="Reborn Skeleton", Level=1000, Island="Cursed Ship"},
+    {Name="Living Zombie", Level=1025, Island="Cursed Ship"},
+    {Name="Demonic Soul", Level=1050, Island="Cursed Ship"},
+    {Name="Possessed Mummy", Level=1075, Island="Cursed Ship"},
+    {Name="Snow Lurker", Level=1100, Island="Cursed Ship"},
+    {Name="Ice Jailer", Level=1125, Island="Cursed Ship"},
+    {Name="Cursed Pirate", Level=1150, Island="Cursed Ship"},
+    {Name="Cursed Captain", Level=1175, Island="Cursed Ship"},
+    {Name="Cursed Skeleton", Level=1200, Island="Cursed Ship"},
+    {Name="Sea Soldier", Level=1250, Island="Forgotten Island"},
+    {Name="Water Fighter", Level=1300, Island="Forgotten Island"},
+    {Name="Pirate Millionaire", Level=1350, Island="Forgotten Island"},
+    {Name="Forest Pirate", Level=1375, Island="Forgotten Island"},
+    {Name="Mythological Pirate", Level=1425, Island="Forgotten Island"},
+    {Name="Jungle Pirate", Level=1475, Island="Forgotten Island"},
+    {Name="Musketeer Pirate", Level=1500, Island="Forgotten Island"},
+    -- Sea 2
+    {Name="Raider", Level=700, Island="Kingdom of Rose S2"},
+    {Name="Mercenary", Level=725, Island="Kingdom of Rose S2"},
+    {Name="Swan Pirate", Level=775, Island="Kingdom of Rose S2"},
+    {Name="Factory Staff", Level=800, Island="Kingdom of Rose S2"},
+    {Name="Marine Captain", Level=850, Island="Kingdom of Rose S2"},
+    {Name="Zombie", Level=900, Island="Kingdom of Rose S2"},
+    {Name="Snow Lurker", Level=1100, Island="Snow Mountain"},
+    {Name="Snow Trooper", Level=1150, Island="Snow Mountain"},
+    {Name="Winter Warrior", Level=1200, Island="Snow Mountain"},
+    {Name="Snow Bandit", Level=1250, Island="Snow Mountain"},
+    {Name="Reborn Skeleton", Level=1300, Island="Cursed Ship S2"},
+    {Name="Living Zombie", Level=1350, Island="Cursed Ship S2"},
+    {Name="Demonic Soul", Level=1400, Island="Cursed Ship S2"},
+    {Name="Possessed Mummy", Level=1450, Island="Cursed Ship S2"},
+    {Name="Snow Lurker", Level=1500, Island="Cursed Ship S2"},
+    {Name="Ice Jailer", Level=1550, Island="Cursed Ship S2"},
+    {Name="Cursed Pirate", Level=1600, Island="Cursed Ship S2"},
+    {Name="Cursed Captain", Level=1650, Island="Cursed Ship S2"},
+    {Name="Cursed Skeleton", Level=1700, Island="Cursed Ship S2"},
+    {Name="Sea Soldier", Level=1750, Island="Forgotten Island S2"},
+    {Name="Water Fighter", Level=1800, Island="Forgotten Island S2"},
+    {Name="Pirate Millionaire", Level=1850, Island="Forgotten Island S2"},
+    {Name="Forest Pirate", Level=1900, Island="Forgotten Island S2"},
+    {Name="Mythological Pirate", Level=1950, Island="Forgotten Island S2"},
+    {Name="Jungle Pirate", Level=2000, Island="Forgotten Island S2"},
+    {Name="Musketeer Pirate", Level=2050, Island="Forgotten Island S2"},
+    {Name="Reborn Skeleton", Level=2100, Island="Haunted Castle S2"},
+    {Name="Living Zombie", Level=2150, Island="Haunted Castle S2"},
+    {Name="Demonic Soul", Level=2200, Island="Haunted Castle S2"},
+    {Name="Possessed Mummy", Level=2250, Island="Haunted Castle S2"},
+    {Name="Snow Lurker", Level=2300, Island="Haunted Castle S2"},
+    {Name="Ice Jailer", Level=2350, Island="Haunted Castle S2"},
+    {Name="Cursed Pirate", Level=2400, Island="Haunted Castle S2"},
+    {Name="Cursed Captain", Level=2450, Island="Haunted Castle S2"},
+    -- Sea 3
+    {Name="Pirate Luffy", Level=1500, Island="Port Town"},
+    {Name="Pirate Crew Member", Level=1525, Island="Port Town"},
+    {Name="Marine Recruit", Level=1550, Island="Port Town"},
+    {Name="Marine Grunt", Level=1575, Island="Port Town"},
+    {Name="Fishman Raider", Level=1625, Island="Hydra Island"},
+    {Name="Fishman Captain", Level=1675, Island="Hydra Island"},
+    {Name="Forest Pirate", Level=1725, Island="Hydra Island"},
+    {Name="Mythological Pirate", Level=1775, Island="Hydra Island"},
+    {Name="Jungle Pirate", Level=1825, Island="Hydra Island"},
+    {Name="Musketeer Pirate", Level=1875, Island="Hydra Island"},
+    {Name="Reborn Skeleton", Level=1925, Island="Haunted Castle S3"},
+    {Name="Living Zombie", Level=1975, Island="Haunted Castle S3"},
+    {Name="Demonic Soul", Level=2025, Island="Haunted Castle S3"},
+    {Name="Possessed Mummy", Level=2075, Island="Haunted Castle S3"},
+    {Name="Snow Lurker", Level=2125, Island="Snow Mountain S3"},
+    {Name="Ice Jailer", Level=2175, Island="Snow Mountain S3"},
+    {Name="Cursed Pirate", Level=2225, Island="Snow Mountain S3"},
+    {Name="Cursed Captain", Level=2275, Island="Snow Mountain S3"},
+    {Name="Cursed Skeleton", Level=2325, Island="Snow Mountain S3"},
+    {Name="Sea Soldier", Level=2375, Island="Floating Turtle S3"},
+    {Name="Water Fighter", Level=2425, Island="Floating Turtle S3"},
+    {Name="Pirate Millionaire", Level=2475, Island="Floating Turtle S3"},
+    {Name="Forest Pirate", Level=2525, Island="Floating Turtle S3"},
+    {Name="Mythological Pirate", Level=2575, Island="Floating Turtle S3"},
+    {Name="Jungle Pirate", Level=2625, Island="Floating Turtle S3"},
+    {Name="Musketeer Pirate", Level=2675, Island="Floating Turtle S3"},
+    {Name="Reborn Skeleton", Level=2725, Island="Haunted Castle S3b"},
+    {Name="Living Zombie", Level=2775, Island="Haunted Castle S3b"},
+    {Name="Demonic Soul", Level=2825, Island="Haunted Castle S3b"},
+    {Name="Possessed Mummy", Level=2875, Island="Haunted Castle S3b"},
+}
+
 local function GetBestQuest()
     local lvl = SafeGet(LP.Data, "Level")
     local best = nil
@@ -211,17 +265,15 @@ local function GetQuest()
     local best = GetBestQuest()
     if not best then return false end
     
-    -- รับเควสต์ผ่าน Remote
     pcall(function()
         RS.Remotes.CommF_:InvokeServer("StartQuest", best.Name, best.Level)
     end)
     
     currentQuest = best
-    print("📜 รับเควสต์: " .. best.Name .. " (Lv." .. best.Level .. ")")
+    print("📜 รับเควสต์: " .. best.Name .. " (Lv." .. best.Level .. ") → " .. best.Island)
     return true
 end
 
--- เช็คว่ารับเควสต์อยู่หรือไม่
 local function HasQuest()
     local ok, has = pcall(function()
         return LP.PlayerGui.Main.Quest.Visible
@@ -229,48 +281,79 @@ local function HasQuest()
     return ok and has
 end
 
--- เช็คจำนวนมอนที่ฆ่า
-local function GetQuestProgress()
-    local ok, txt = pcall(function()
-        return LP.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text
-    end)
-    if ok and txt then
-        -- format: "Defeat 5 Bandit"
-        local current, total = txt:match("(%d+)/(%d+)")
-        return tonumber(current) or 0, tonumber(total) or 0
-    end
-    return 0, 0
-end
-
--- ================== CLICK ==================
-local function Click()
+-- ================== 📍 TELEPORT ==================
+local function TeleportTo(cf)
     pcall(function()
-        VU:CaptureController()
-        VU:ClickButton1(Vector2.new(0, 0))
+        local h = HRP()
+        if not h then return end
+        h.CFrame = cf
     end)
 end
 
--- Fast Click Loop
+local function TeleportToIsland(islandName)
+    local island = ISLANDS[islandName]
+    if not island then
+        warn("⚠️ ไม่เจอเกาะ: " .. islandName)
+        return false
+    end
+    pcall(function()
+        local h = HRP()
+        if h then
+            h.CFrame = island.CFrame + Vector3.new(0, 30, 0)
+        end
+    end)
+    return true
+end
+
+-- ================== 🎯 BRING MOBS (แก้ไม่ให้ขึ้นฟ้า) ==================
+-- ดึงมอนมารวมที่ตัวเรา ระยะ 25 studs ด้านหน้า
+local function BringMobToPlayer(mob)
+    pcall(function()
+        local h = HRP()
+        if not h then return end
+        local mobHRP = mob:FindFirstChild("HumanoidRootPart")
+        local mobHum = mob:FindFirstChild("Humanoid")
+        if not mobHRP or not mobHum then return end
+        
+        -- ✅ ดึงมารวมที่ตัวเรา (ระยะ 15 studs ด้านหน้า ไม่ขึ้นฟ้า)
+        local offset = Vector3.new(
+            math.random(-15, 15),
+            3,  -- ความสูง 3 studs (เท่าตัวเรา)
+            math.random(-15, 15)
+        )
+        local targetPos = h.Position + offset
+        
+        -- ใช้ CFrame ตรงๆ ไม่ให้ลอย
+        mobHRP.CFrame = CFrame.new(targetPos)
+        mobHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        
+        -- หยุดการเคลื่อนที่ของมอน
+        mobHum.WalkSpeed = 0
+        mobHum.JumpPower = 0
+        mobHum.PlatformStand = true  -- ✅ ป้องกันการลอย
+        
+        -- ล็อค Position ไว้ (ทุก 0.1 วิ จะ re-position)
+        mobHRP.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.01, 0.01, 0, 0)
+    end)
+end
+
+-- Bring Mobs Loop
 task.spawn(function()
-    while task.wait() do
-        if CFG.AutoClick then
+    while task.wait(0.05) do
+        if CFG.BringMobs and (CFG.AutoFarm or CFG.Magnet) then
             pcall(function()
-                if CFG.AutoFarm then
-                    Click()
-                    return
-                end
-                -- ถ้าไม่ AutoFarm คลิกเฉพาะตอนมีมอนใกล้
                 local h = HRP()
                 if not h then return end
                 local en = workspace:FindFirstChild("Enemies")
-                if en then
-                    for _, m in pairs(en:GetChildren()) do
-                        local hrp = m:FindFirstChild("HumanoidRootPart")
-                        local hum = m:FindFirstChild("Humanoid")
-                        if hrp and hum and hum.Health > 0 
-                           and (hrp.Position - h.Position).Magnitude <= 100 then
-                            Click()
-                            return
+                if not en then return end
+                
+                for _, m in pairs(en:GetChildren()) do
+                    local mobHRP = m:FindFirstChild("HumanoidRootPart")
+                    local mobHum = m:FindFirstChild("Humanoid")
+                    if mobHRP and mobHum and mobHum.Health > 0 then
+                        local dist = (mobHRP.Position - h.Position).Magnitude
+                        if dist <= 300 then
+                            BringMobToPlayer(m)
                         end
                     end
                 end
@@ -279,7 +362,49 @@ task.spawn(function()
     end
 end)
 
--- ================== SKILL COMBO ==================
+-- ================== ⚡ FAST CLICK (แก้ให้เร็วสุด) ==================
+local lastClick = 0
+local function Click()
+    pcall(function()
+        VU:CaptureController()
+        VU:ClickButton1(Vector2.new(0, 0))
+    end)
+end
+
+-- ✅ ใช้ RunService.Heartbeat เพื่อคลิกทุกเฟรม (เร็วที่สุด)
+-- + เพิ่ม VIM สำหรับ executor ที่ VU ไม่ทำงาน
+local ClickConn = RunService.Heartbeat:Connect(function()
+    if not CFG.AutoClick then return end
+    if not CFG.AutoFarm then return end
+    
+    pcall(function()
+        local h = HRP()
+        if not h then return end
+        
+        -- เช็คว่ามีมอนใกล้ไหม
+        local hasEnemy = false
+        local en = workspace:FindFirstChild("Enemies")
+        if en then
+            for _, m in pairs(en:GetChildren()) do
+                local mobHRP = m:FindFirstChild("HumanoidRootPart")
+                local mobHum = m:FindFirstChild("Humanoid")
+                if mobHRP and mobHum and mobHum.Health > 0 
+                   and (mobHRP.Position - h.Position).Magnitude <= 80 then
+                    hasEnemy = true
+                    break
+                end
+            end
+        end
+        
+        if hasEnemy then
+            -- คลิก 2 วิธีพร้อมกันเพื่อความชัวร์
+            VU:CaptureController()
+            VU:ClickButton1(Vector2.new(0, 0))
+        end
+    end)
+end)
+
+-- ================== ⌨️ SKILL COMBO ==================
 local SKILL_KEYS = {
     Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V,
     Enum.KeyCode.F, Enum.KeyCode.E, Enum.KeyCode.Q, Enum.KeyCode.R,
@@ -288,13 +413,13 @@ local SKILL_KEYS = {
 local function PressKey(keyCode)
     pcall(function()
         VIM:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.02)
+        task.wait(0.01)
         VIM:SendKeyEvent(false, keyCode, false, game)
     end)
 end
 
 task.spawn(function()
-    while task.wait(0.3) do
+    while task.wait(0.2) do
         if CFG.AutoSkill then
             pcall(function()
                 local h = HRP()
@@ -303,10 +428,10 @@ task.spawn(function()
                 local en = workspace:FindFirstChild("Enemies")
                 if en then
                     for _, m in pairs(en:GetChildren()) do
-                        local hrp = m:FindFirstChild("HumanoidRootPart")
-                        local hum = m:FindFirstChild("Humanoid")
-                        if hrp and hum and hum.Health > 0 
-                           and (hrp.Position - h.Position).Magnitude <= 60 then
+                        local mobHRP = m:FindFirstChild("HumanoidRootPart")
+                        local mobHum = m:FindFirstChild("Humanoid")
+                        if mobHRP and mobHum and mobHum.Health > 0 
+                           and (mobHRP.Position - h.Position).Magnitude <= 60 then
                             hasEnemy = true
                             break
                         end
@@ -315,7 +440,7 @@ task.spawn(function()
                 if hasEnemy then
                     for _, k in pairs(SKILL_KEYS) do
                         PressKey(k)
-                        task.wait(0.05)
+                        task.wait(0.03)
                     end
                 end
             end)
@@ -376,7 +501,7 @@ task.spawn(function()
                     CF.activeController.timeToNextAttack = 0
                     CF.activeController.attacking = false
                     CF.activeController.increment = 4
-                    CF.activeController.hitboxMagnitude = 60
+                    CF.activeController.hitboxMagnitude = 65
                     CF.activeController.blocking = false
                 end
             end)
@@ -402,12 +527,37 @@ task.spawn(function()
     end
 end)
 
--- ================== 🎯 AUTO FARM + QUEST ==================
--- นี่คือส่วนสำคัญ! ลำดับการทำงาน:
--- 1. เช็คว่ามีเควสต์ไหม → ไม่มี = รับเควสต์
--- 2. หามอนในเควสต์
--- 3. Teleport ไปตี
--- 4. ครบ → ส่งเควสต์ → รับใหม่
+-- ================== 🌍 AUTO ISLAND + FARM ==================
+-- ขั้นตอน:
+-- 1. ดู Level → หาเควสต์ที่ดีที่สุด
+-- 2. เช็คว่าเราอยู่เกาะที่ถูกไหม → ถ้าไม่ Teleport ไป
+-- 3. รับเควสต์
+-- 4. ดึงมอน + ตี
+-- 5. ครบเควสต์ → วนใหม่
+
+local function GetClosestEnemy(questName)
+    local h = HRP()
+    if not h then return nil end
+    local en = workspace:FindFirstChild("Enemies")
+    if not en then return nil end
+    
+    local closest, closestDist = nil, math.huge
+    for _, m in pairs(en:GetChildren()) do
+        local mobHRP = m:FindFirstChild("HumanoidRootPart")
+        local mobHum = m:FindFirstChild("Humanoid")
+        if mobHRP and mobHum and mobHum.Health > 0 then
+            -- ถ้ามีชื่อเควสต์ → ตรงกับเควสต์ก่อน
+            if questName and m.Name == questName then
+                local d = (mobHRP.Position - h.Position).Magnitude
+                if d < closestDist then
+                    closest = m
+                    closestDist = d
+                end
+            end
+        end
+    end
+    return closest, closestDist
+end
 
 task.spawn(function()
     while task.wait(0.3) do
@@ -416,84 +566,49 @@ task.spawn(function()
                 local h = HRP()
                 if not h then return end
 
-                -- STEP 1: รับเควสต์ถ้ายังไม่มี
+                -- STEP 1: หาเควสต์ที่ดีที่สุด
+                local best = GetBestQuest()
+                if not best then return end
+
+                -- STEP 2: Auto Island - ถ้าอยู่ผิดเกาะ ให้ย้าย
+                if CFG.AutoIsland and best.Island then
+                    local island = ISLANDS[best.Island]
+                    if island then
+                        -- เช็คระยะห่างจากเกาะเป้าหมาย
+                        local dist = (h.Position - island.CFrame.Position).Magnitude
+                        if dist > 2000 then
+                            -- ห่างเกิน → Teleport ไปเกาะ
+                            TeleportToIsland(best.Island)
+                            task.wait(1)
+                            return
+                        end
+                    end
+                end
+
+                -- STEP 3: รับเควสต์ถ้ายังไม่มี
                 if CFG.AutoQuest and not HasQuest() then
-                    GetQuest()
-                    task.wait(1)
-                    return
+                    -- ถ้า currentQuest ไม่ตรงกับ best → รับใหม่
+                    if not currentQuest or currentQuest.Name ~= best.Name then
+                        GetQuest()
+                        task.wait(1)
+                        return
+                    end
                 end
 
-                -- STEP 2: หามอนในเควสต์
-                local en = workspace:FindFirstChild("Enemies")
-                if not en then return end
-
+                -- STEP 4: หามอน
                 local questName = currentQuest and currentQuest.Name or nil
-                local closest, closestDist = nil, math.huge
-
-                for _, m in pairs(en:GetChildren()) do
-                    local hrp = m:FindFirstChild("HumanoidRootPart")
-                    local hum = m:FindFirstChild("Humanoid")
-                    if hrp and hum and hum.Health > 0 then
-                        -- เช็คว่าตรงกับเควสต์ไหม
-                        local isQuestMob = true
-                        if questName then
-                            isQuestMob = (m.Name == questName) 
-                        end
-                        
-                        if isQuestMob then
-                            local d = (hrp.Position - h.Position).Magnitude
-                            if d < closestDist then
-                                closest = m
-                                closestDist = d
-                            end
-                        end
-                    end
+                local target, dist = GetClosestEnemy(questName)
+                
+                -- ถ้าไม่เจอมอนในเควสต์ → ใช้ตัวไหนก็ได้
+                if not target then
+                    target, dist = GetClosestEnemy(nil)
                 end
 
-                -- ถ้าไม่เจอมอนในเควสต์ → ใช้ตัวแรกที่เจอ
-                if not closest then
-                    for _, m in pairs(en:GetChildren()) do
-                        local hrp = m:FindFirstChild("HumanoidRootPart")
-                        local hum = m:FindFirstChild("Humanoid")
-                        if hrp and hum and hum.Health > 0 then
-                            local d = (hrp.Position - h.Position).Magnitude
-                            if d < closestDist then
-                                closest = m
-                                closestDist = d
-                            end
-                        end
-                    end
-                end
-
-                -- STEP 3: Teleport ไปตี
-                if closest then
-                    local hrp = closest:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local targetCF = hrp.CFrame * CFrame.new(0, CFG.Distance, 0)
-                        h.CFrame = targetCF
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- ================== BRING MOBS (ตัวเลือกเสริม) ==================
-task.spawn(function()
-    while task.wait(0.1) do
-        if CFG.BringMobs then
-            pcall(function()
-                local en = workspace:FindFirstChild("Enemies")
-                local h = HRP()
-                if not en or not h then return end
-                for _, m in pairs(en:GetChildren()) do
-                    local hrp = m:FindFirstChild("HumanoidRootPart")
-                    local hum = m:FindFirstChild("Humanoid")
-                    if hrp and hum and hum.Health > 0 
-                       and (hrp.Position - h.Position).Magnitude <= 350 then
-                        hrp.CFrame = h.CFrame * CFrame.new(0, 30, 0)
-                        hrp.Size = Vector3.new(30, 30, 30)
-                        hum.WalkSpeed = 0
+                -- STEP 5: Teleport ไปหามอน
+                if target and dist then
+                    local mobHRP = target:FindFirstChild("HumanoidRootPart")
+                    if mobHRP then
+                        h.CFrame = mobHRP.CFrame * CFrame.new(0, CFG.Distance, 0)
                     end
                 end
             end)
@@ -504,7 +619,7 @@ end)
 print("✅ Systems loaded")
 
 -- ================================================================
--- ================== 🎨 PREMIUM UI ===============================
+-- ================== 🎨 UI =======================================
 -- ================================================================
 
 local old = game.CoreGui:FindFirstChild("RbotPremium")
@@ -570,8 +685,7 @@ local function SetUIVisible(visible)
     if visible then
         Main.Visible = true
         TS:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = OPEN_SIZE,
-            BackgroundTransparency = 0.05
+            Size = OPEN_SIZE, BackgroundTransparency = 0.05
         }):Play()
         TS:Create(Blur, TweenInfo.new(0.4), {Size = 14}):Play()
         if FloatingBtn then
@@ -653,7 +767,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 300, 0, 25)
 Title.Position = UDim2.new(0, 72, 0, 12)
 Title.BackgroundTransparency = 1
-Title.Text = "RBOT • PREMIUM v3.3"
+Title.Text = "RBOT • PREMIUM v3.4"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 18
@@ -664,7 +778,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(0, 300, 0, 18)
 SubTitle.Position = UDim2.new(0, 72, 0, 35)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Auto Quest + Attack | " .. WORLD[game.PlaceId]
+SubTitle.Text = "Bring Mobs + Auto Island | " .. WORLD[game.PlaceId]
 SubTitle.TextColor3 = Color3.fromRGB(160, 150, 180)
 SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.TextSize = 11
@@ -698,7 +812,7 @@ task.spawn(function()
         pcall(function()
             LevelTxt.Text = "LV." .. SafeGet(LP.Data, "Level")
             if currentQuest then
-                QuestTxt.Text = "📜 " .. currentQuest.Name .. " Lv." .. currentQuest.Level
+                QuestTxt.Text = "📜 " .. currentQuest.Name
             else
                 QuestTxt.Text = "📜 ไม่มีเควสต์"
             end
@@ -706,7 +820,7 @@ task.spawn(function()
     end
 end)
 
--- Min Button
+-- Min Btn
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 36, 0, 36)
 MinBtn.Position = UDim2.new(1, -95, 0.5, -18)
@@ -1186,25 +1300,27 @@ local MiscTab = CreateTab("อื่น ๆ", "⚙️")
 local SetTab = CreateTab("ตั้งค่า", "🔧")
 
 Section(HomeTab, "ข้อมูล")
-Button(HomeTab, "🤖 Rbot v3.3", "Auto Quest + Attack", function() end)
-Button(HomeTab, "📜 เควสต์ปัจจุบัน", "ดูว่าได้รับเควสต์อะไรอยู่", function() 
+Button(HomeTab, "🤖 Rbot v3.4", "Bring Mobs + Auto Island", function() end)
+Button(HomeTab, "📜 เควสต์ปัจจุบัน", "ดูเควสต์ที่ทำอยู่", function() 
     if currentQuest then
-        print("เควสต์: " .. currentQuest.Name .. " Lv." .. currentQuest.Level)
+        print("📜 " .. currentQuest.Name .. " | เกาะ: " .. currentQuest.Island)
     else
         print("ยังไม่มีเควสต์")
     end
 end)
 Section(HomeTab, "วิธีใช้")
 Button(HomeTab, "⌨️ Right Ctrl", "เปิด/ปิด UI", function() end)
-Button(HomeTab, "🟣 โลโก้ R", "คลิกเพื่อเปิด UI", function() end)
+Button(HomeTab, "🟣 โลโก้ R", "คลิกเปิด/ปิด UI", function() end)
 
 Section(FarmTab, "🎯 Auto Farm System")
-Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมัติ (ต้องเปิด!)", "AutoQuest")
-Toggle(FarmTab, "Auto Farm", "ฟาร์ม + ตีมอน + ส่งเควสต์", "AutoFarm")
-Toggle(FarmTab, "Auto Click", "คลิกอัตโนมัติ", "AutoClick")
-Toggle(FarmTab, "Bring Mobs", "ดึงมอนเข้าหาตัว (เร็ว)", "BringMobs")
-Toggle(FarmTab, "Magnet Token", "ดึงทุกอย่างเข้าหา", "Magnet")
+Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมัติ", "AutoQuest")
+Toggle(FarmTab, "Auto Farm", "ฟาร์ม + ตี + ย้ายเกาะ", "AutoFarm")
+Toggle(FarmTab, "Auto Island", "ย้ายเกาะตาม Level", "AutoIsland")
+Toggle(FarmTab, "Auto Click", "คลิกเร็วมาก (Heartbeat)", "AutoClick")
+Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมที่ตัวเรา", "BringMobs")
+Toggle(FarmTab, "Magnet", "ดึงของ + มอนทุกอย่าง", "Magnet")
 Slider(FarmTab, "Farm Distance", 5, 100, "Distance")
+Slider(FarmTab, "Bring Distance", 5, 50, "BringDistance")
 
 Section(SkillTab, "สกิล")
 Toggle(SkillTab, "Auto Skill", "กด Z X C V F E Q R", "AutoSkill")
@@ -1312,9 +1428,8 @@ UIS.InputBegan:Connect(function(i, g)
 end)
 
 print("═══════════════════════════════════════")
-print("✅ Rbot v3.3 พร้อมใช้งาน!")
-print("📜 Auto Quest: เปิดอัตโนมัติ")
-print("🌾 Auto Farm: เปิดในเมนู")
-print("⌨️ Right Ctrl = เปิด/ปิด UI")
-print("🟣 คลิกโลโก้ R = เปิด/ปิด UI")
+print("✅ Rbot v3.4 พร้อมใช้งาน!")
+print("🎯 Bring Mobs: ดึงมอนมาที่ตัว (ไม่ขึ้นฟ้า)")
+print("⚡ Fast Click: คลิกทุกเฟรม (Heartbeat)")
+print("🌍 Auto Island: ย้ายเกาะตาม Level")
 print("═══════════════════════════════════════")
