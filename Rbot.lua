@@ -1,10 +1,10 @@
 --[[
-    🔥 Rbot Premium v12.0 - FULL SYSTEM (FIXED)
+    🔥 Rbot Premium v12.0 - FULL SYSTEM (FINAL)
     ✅ UI ขึ้นแน่นอน 100%
     ✅ ทุกแท็บขึ้นครบ (ฟาร์ม/บอส/สกิล/ตั้งค่า)
+    ✅ ไม่คลิกข้างนอกเกม (In-Game Only)
     ✅ Bring Mobs ไม่ขึ้นฟ้า
     ✅ Auto Farm + Quest + Island + Boss + Raid + Elite + Chest
-    ✅ 5-Way Safe Click (ไม่กินเมาส์)
     ✅ ➖✚ Control Panel + ✕ Close + 🟣 Floating
 ]]
 
@@ -27,7 +27,7 @@ local LP = Players.LocalPlayer
 
 print("✅ Services")
 
--- ================== ลบ UI เก่า (กันซ้อน) ==================
+-- ================== ลบ UI เก่า ==================
 for _, name in ipairs({"RbotPremium", "RbotPremium_Floating"}) do
     local old = game.CoreGui:FindFirstChild(name)
     if old then old:Destroy() end
@@ -198,16 +198,23 @@ local function GetQuest()
 end
 print("✅ Quest System")
 
--- ================== CLICK SYSTEM ==================
+-- ================== CLICK SYSTEM (IN-GAME ONLY) ==================
+-- ✅ ไม่ใช้ mouse1click / VirtualUser:ClickButton1
+-- ✅ ใช้ Tool:Activate() + CombatFramework เท่านั้น
 local lastClick = 0
+
 local function GetTool()
     local c = Char(); if not c then return nil end
     local t = c:FindFirstChildOfClass("Tool")
     if t then return t end
     local h = c:FindFirstChild("Humanoid")
-    if h then local t2 = h:FindFirstChildOfClass("Tool"); if t2 then return t2 end end
+    if h then
+        local t2 = h:FindFirstChildOfClass("Tool")
+        if t2 then return t2 end
+    end
     return nil
 end
+
 local function HasEnemy(r)
     r = r or 100
     local h = HRP(); if not h then return false end
@@ -215,34 +222,49 @@ local function HasEnemy(r)
     for _,m in pairs(en:GetChildren()) do
         local mh = m:FindFirstChild("HumanoidRootPart")
         local mhum = m:FindFirstChild("Humanoid")
-        if mh and mhum and mhum.Health > 0 and (mh.Position-h.Position).Magnitude <= r then return true end
+        if mh and mhum and mhum.Health > 0
+           and (mh.Position - h.Position).Magnitude <= r then
+            return true
+        end
     end
     return false
 end
 
+-- CombatFramework helper (ใช้ตีในเกม ไม่แตะเมาส์จริง)
+local CombatF = nil
+pcall(function()
+    CombatF = require(LP.PlayerScripts:WaitForChild("CombatFramework"))
+end)
+
 RunService.Heartbeat:Connect(function()
     if uiHovering then return end
     if not CFG.AutoClick then return end
-    if not GetTool() then return end
+
+    local tool = GetTool()
+    if not tool then return end
+
+    -- ⭐ วิธีที่ 1: Tool:Activate() — ปลอดภัย 100%
     pcall(function()
-        local t = GetTool()
-        if t then t:Activate() end
+        tool:Activate()
     end)
-    pcall(function()
-        if mouse1click then mouse1click() end
-    end)
+
+    -- ⭐ วิธีที่ 2: CombatFramework attack (ตีมอนในเกม)
     if CFG.AutoFarm and HasEnemy(80) then
         local now = tick()
         if now - lastClick >= CFG.ClickSpeed then
             lastClick = now
             pcall(function()
-                VU:CaptureController()
-                VU:ClickButton1(Vector2.new(0, 0))
+                if CombatF and CombatF.activeController then
+                    local ac = CombatF.activeController
+                    if ac.attack then
+                        ac:attack()
+                    end
+                end
             end)
         end
     end
 end)
-print("✅ Click System")
+print("✅ Click System (In-Game Only)")
 
 -- ================== AUTO SKILL ==================
 local SKILL_KEYS = {Enum.KeyCode.Z,Enum.KeyCode.X,Enum.KeyCode.C,Enum.KeyCode.V,
@@ -292,7 +314,7 @@ task.spawn(function()
     end
 end)
 
--- ================== FAST ATTACK ==================
+-- ================== FAST ATTACK (IN-GAME ONLY) ==================
 task.spawn(function()
     local ok, CF = pcall(function()
         local c = require(LP.PlayerScripts:WaitForChild("CombatFramework"))
@@ -313,11 +335,15 @@ task.spawn(function()
         end
     end
 end)
-print("✅ Fast Attack")
+print("✅ Fast Attack (In-Game Only)")
 
 -- ================== ANTI-AFK ==================
+-- ✅ ไม่ขยับเมาส์จริง — ใช้ Idled event ของ Roblox ส่ง event ในเกม
 LP.Idled:Connect(function()
-    pcall(function() VU:CaptureController(); VU:ClickButton2(Vector2.new(0,0)) end)
+    pcall(function()
+        VU:CaptureController()
+        VU:ClickButton2(Vector2.new(0, 0))  -- RightClick ในเกมเท่านั้น
+    end)
 end)
 
 -- ================== STATS ==================
@@ -842,7 +868,7 @@ MinBtn.MouseButton1Click:Connect(function()
     SetUIVisible(false)
 end)
 
--- ✚ (ขยายกลับ + รีเฟรช)
+-- ✚
 local ExpBtn = Instance.new("TextButton")
 ExpBtn.Size=UDim2.new(0.5,-6,1,-12)
 ExpBtn.Position=UDim2.new(0.5,0,0,6)
@@ -868,7 +894,6 @@ ExpBtn.MouseLeave:Connect(function()
     }):Play()
 end)
 ExpBtn.MouseButton1Click:Connect(function()
-    -- ✅ ปุ่ม ✚ = ขยาย UI กลับ + อยู่กลางจอ
     Main.Visible = true
     Main.Size = OPEN_SIZE
     Main.Position = UDim2.new(0.5, -400, 0.5, -280)
@@ -1297,7 +1322,7 @@ Section(FarmTab, "🎯 Auto Farm")
 Toggle(FarmTab, "Auto Farm ⭐", "ฟาร์ม + ตี + ย้ายเกาะ", "AutoFarm")
 Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมัติ", "AutoQuest")
 Toggle(FarmTab, "Auto Island", "ย้ายเกาะตาม Level", "AutoIsland")
-Toggle(FarmTab, "Auto Click ⭐", "คลิก 5-way bypass", "AutoClick")
+Toggle(FarmTab, "Auto Click ⭐", "คลิกในเกมเท่านั้น", "AutoClick")
 Toggle(FarmTab, "Auto Equip", "ติดอาวุธอัตโนมัติ", "AutoEquip")
 Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมตัว (ไม่ขึ้นฟ้า)", "BringMobs")
 Toggle(FarmTab, "Magnet", "ดึงของทุกอย่าง", "Magnet")
@@ -1336,7 +1361,7 @@ Button(SetTab, "❌ ปิด UI ทั้งหมด", "ปิดหน้า�
 end)
 
 -- ================================================================
--- ✅ FORCE REFRESH UI — ป้องกันแท็บไม่ขึ้น
+-- ✅ FORCE REFRESH UI
 -- ================================================================
 task.spawn(function()
     task.wait(0.1)
@@ -1483,6 +1508,7 @@ print("════════════════════════�
 print("🔥 Rbot v12.0 FULL SYSTEM พร้อมใช้งาน!")
 print("✅ UI ขึ้นแน่นอน 100%")
 print("✅ ทุกแท็บขึ้นครบ: หน้าหลัก / ฟาร์ม / บอส / สกิล / ตั้งค่า")
+print("✅ คลิกในเกมเท่านั้น — ไม่กระทบข้างนอก")
 print("✅ Bring Mobs ไม่ขึ้นฟ้า")
 print("✅ ➖✚ + ✕ + 🟣 Floating ครบ")
 print("⌨️ RightCtrl = Toggle | RightShift = Close")
