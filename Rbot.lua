@@ -1,10 +1,10 @@
 --[[
-    🔥 Rbot Premium v9.0 - ULTIMATE EDITION 2026
-    ✅ Level 1-3000 (Sea 1-4 + Submerged + Secrets)
-    ✅ Auto Farm + Quest + Island + Boss + Raid + Elite Hunter + Chest
-    ✅ 5-Way Click Bypass + Fast Attack + Bring Mobs + Magnet
-    ✅ UI Glassmorphism 2.0 + Save/Load Config
-    ✅ รองรับทุก Executor (Delta/Wave/Solara/Codex)
+    🔥 Rbot Premium v10.0 - ULTIMATE 2026
+    ✅ Minimize (➖) + Close (✕) + Floating Button (🟣)
+    ✅ Level 1-3000 | Sea 1-4 | 150+ Quests
+    ✅ Auto Farm + Quest + Island + Boss + Raid + Elite + Chest
+    ✅ 5-Way Click Bypass | Fast Attack | Bring Mobs
+    ✅ Animated Glow UI | Save/Load Config
 ]]
 
 -- ================== SERVICES ==================
@@ -20,28 +20,24 @@ local TPS = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local LP = Players.LocalPlayer
 
-print("🔥 Rbot v9.0 ULTIMATE Loading...")
+print("🔥 Rbot v10.0 ULTIMATE Loading...")
 
--- ================== CHECK GAME ==================
+-- ================== CHECK ==================
 local WORLD = {
-    [2753915549] = "Sea 1", [4442272183] = "Sea 2",
-    [7449423635] = "Sea 3", [155615604] = "Sea 4",
+    [2753915549]="Sea 1",[4442272183]="Sea 2",
+    [7449423635]="Sea 3",[155615604]="Sea 4",
 }
 if not WORLD[game.PlaceId] then warn("⚠️ ใช้กับ Blox Fruits เท่านั้น!") return end
-print("🌊 Game: " .. WORLD[game.PlaceId])
+print("🌊 " .. WORLD[game.PlaceId])
 
 -- ================== CONFIG ==================
 local CFG = {
-    -- Farm
     AutoFarm=false, AutoQuest=true, AutoIsland=true, AutoClick=true,
     AutoSkill=true, AutoHaki=true, AutoEquip=true,
     FastAttack=true, BringMobs=true, Magnet=false,
     AutoBoss=false, AutoEliteHunter=false, AutoRaid=false,
-    AutoChest=false, AutoSecret=false,
-    -- Char
-    WalkSpeed=16, JumpPower=50, Distance=30, NoClip=false, Fly=false,
-    -- Internal
-    ClickSpeed=0.03, RaidDifficulty="Flame",
+    AutoChest=false, NoClip=false,
+    WalkSpeed=16, JumpPower=50, Distance=30, ClickSpeed=0.03,
 }
 
 -- ================== HELPERS ==================
@@ -64,7 +60,7 @@ local function FormatNum(n)
     else return tostring(math.floor(n)) end
 end
 
--- ================== 🌍 ISLANDS (2026 ครบทุกเกาะ) ==================
+-- ================== 🌍 ISLANDS ==================
 local ISLANDS = {
     ["Starter Island"]={Level=1,CF=CFrame.new(1040,16,1540)},
     ["Jungle"]={Level=15,CF=CFrame.new(-1626,35,45)},
@@ -96,9 +92,8 @@ local ISLANDS = {
     ["Submerged Island"]={Level=2625,CF=CFrame.new(60500,700,1550)},
 }
 
--- ================== 📜 QUESTS (2026 - 150+ เควสต์ ครบทุก Level) ==================
+-- ================== 📜 QUESTS ==================
 local QUESTS = {
-    -- Sea 1
     {Name="Bandit",Level=1,I="Starter Island"},{Name="Monkey",Level=1,I="Starter Island"},
     {Name="Blade Bandit",Level=15,I="Jungle"},{Name="Jungle Pirate",Level=20,I="Jungle"},
     {Name="Desert Bandit",Level=30,I="Desert"},{Name="Desert Officer",Level=40,I="Desert"},
@@ -125,7 +120,6 @@ local QUESTS = {
     {Name="Water Fighter",Level=1300,I="Forgotten Island"},{Name="Pirate Millionaire",Level=1350,I="Forgotten Island"},
     {Name="Forest Pirate",Level=1375,I="Forgotten Island"},{Name="Mythological Pirate",Level=1425,I="Forgotten Island"},
     {Name="Jungle Pirate",Level=1475,I="Forgotten Island"},{Name="Musketeer Pirate",Level=1500,I="Forgotten Island"},
-    -- Sea 3
     {Name="Pirate Millionaire",Level=1500,I="Port Town"},{Name="Pistol Billionaire",Level=1525,I="Port Town"},
     {Name="Stone",Level=1550,I="Port Town"},{Name="Dragon Crew Warrior",Level=1575,I="Hydra Island"},
     {Name="Dragon Crew Archer",Level=1600,I="Hydra Island"},{Name="Hydra Enforcer",Level=1625,I="Hydra Island"},
@@ -159,22 +153,19 @@ local function GetBestQuest()
     return best
 end
 
--- ================== 🎯 QUEST SYSTEM ==================
+-- ================== 🎯 QUEST ==================
 local currentQuest = nil
 local lastQuestAttempt = 0
-
 local function HasQuest()
-    local ok, has = pcall(function() return LP.PlayerGui.Main.Quest.Visible end)
+    local ok,has = pcall(function() return LP.PlayerGui.Main.Quest.Visible end)
     return ok and has
 end
-
 local function GetCurrentQuestName()
-    local ok, name = pcall(function()
+    local ok,name = pcall(function()
         return LP.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text:match("Defeat %d+ (.+)") or ""
     end)
     return ok and name or ""
 end
-
 local function GetQuest()
     local now = tick()
     if now - lastQuestAttempt < 3 then return false end
@@ -185,11 +176,11 @@ local function GetQuest()
         RS.Remotes.CommF_:InvokeServer("StartQuest", best.Name, best.Level)
     end)
     currentQuest = best
-    print("📜 Quest: "..best.Name.." (Lv."..best.Level..") → "..best.I)
+    print("📜 "..best.Name.." (Lv."..best.Level..") → "..best.I)
     return true
 end
 
--- ================== ⚡ 5-WAY CLICK SYSTEM ==================
+-- ================== ⚡ 5-WAY CLICK ==================
 local lastClick = 0
 local function GetTool()
     local c = Char(); if not c then return nil end
@@ -199,7 +190,6 @@ local function GetTool()
     if h then local t2 = h:FindFirstChildOfClass("Tool"); if t2 then return t2 end end
     return nil
 end
-
 local function HasEnemy(r)
     r = r or 100
     local h = HRP(); if not h then return false end
@@ -211,29 +201,21 @@ local function HasEnemy(r)
     end
     return false
 end
-
 local function Click()
     local now = tick()
     if now - lastClick < CFG.ClickSpeed then return end
     lastClick = now
-    local cam = workspace.CurrentCamera
-    if not cam then return end
+    local cam = workspace.CurrentCamera; if not cam then return end
     local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-    -- Method 1: Tool:Activate (best)
     pcall(function() local t=GetTool(); if t then t:Activate() end end)
-    -- Method 2: VU center
     pcall(function() VU:CaptureController(); VU:ClickButton1(center) end)
-    -- Method 3: VU (0,0)
     pcall(function() VU:CaptureController(); VU:ClickButton1(Vector2.new(0,0)) end)
-    -- Method 4: VIM
     pcall(function()
         VIM:SendMouseButtonEvent(center.X,center.Y,0,true,game,1)
         VIM:SendMouseButtonEvent(center.X,center.Y,0,false,game,1)
     end)
-    -- Method 5: mouse1click
     pcall(function() if mouse1click then mouse1click() end end)
 end
-
 RunService.Heartbeat:Connect(function()
     if CFG.AutoClick and CFG.AutoFarm and GetTool() and HasEnemy(80) then Click() end
 end)
@@ -255,7 +237,7 @@ task.spawn(function()
     end
 end)
 
--- ================== 🥊 AUTO HAKI ==================
+-- ================== 🥊 HAKI ==================
 task.spawn(function()
     while task.wait(0.5) do
         if CFG.AutoHaki then
@@ -269,7 +251,7 @@ task.spawn(function()
     end
 end)
 
--- ================== ⚔️ AUTO EQUIP ==================
+-- ================== ⚔️ EQUIP ==================
 task.spawn(function()
     while task.wait(1) do
         if CFG.AutoEquip and (CFG.AutoFarm or CFG.AutoClick) then
@@ -313,7 +295,7 @@ LP.Idled:Connect(function()
     pcall(function() VU:CaptureController(); VU:ClickButton2(Vector2.new(0,0)) end)
 end)
 
--- ================== 📊 STATS LOOP ==================
+-- ================== 📊 STATS ==================
 task.spawn(function()
     while task.wait(0.3) do
         local h = Hum()
@@ -366,7 +348,7 @@ local function TeleportToIsland(name)
     return true
 end
 
--- ================== 🎯 AUTO FARM LOOP ==================
+-- ================== 🎯 AUTO FARM ==================
 local function GetClosestEnemy(questName)
     local h = HRP(); if not h then return nil, math.huge end
     local en = workspace:FindFirstChild("Enemies"); if not en then return nil, math.huge end
@@ -390,25 +372,22 @@ task.spawn(function()
             pcall(function()
                 local h = HRP(); if not h then return end
                 local best = GetBestQuest(); if not best then return end
-                -- Auto Island
                 if CFG.AutoIsland and best.I then
                     local isl = ISLANDS[best.I]
                     if isl then
                         local d = (h.Position - isl.CF.Position).Magnitude
                         if d > 3000 then
                             TeleportToIsland(best.I)
-                            print("🏝️ ย้าย: "..best.I)
+                            print("🏝️ "..best.I)
                             task.wait(2); return
                         end
                     end
                 end
-                -- Auto Quest
                 if CFG.AutoQuest and not HasQuest() then
                     if not currentQuest or currentQuest.Name ~= best.Name then
                         GetQuest(); task.wait(1); return
                     end
                 end
-                -- หามอน
                 local qName = currentQuest and currentQuest.Name or nil
                 local target, dist = GetClosestEnemy(qName)
                 if not target then target, dist = GetClosestEnemy(nil) end
@@ -443,7 +422,7 @@ task.spawn(function()
     end
 end)
 
--- ================== 🎯 AUTO ELITE HUNTER (ปืน Yama) ==================
+-- ================== 🎯 ELITE HUNTER ==================
 task.spawn(function()
     while task.wait(2) do
         if CFG.AutoEliteHunter then
@@ -452,7 +431,6 @@ task.spawn(function()
                 if tonumber(prog) and tonumber(prog) < 30 then
                     RS.Remotes.CommF_:InvokeServer("EliteHunter")
                 end
-                -- หาบอส Diablo/Urban/Deandre
                 local h = HRP()
                 local en = workspace:FindFirstChild("Enemies")
                 if en and h then
@@ -474,10 +452,8 @@ task.spawn(function()
     while task.wait(3) do
         if CFG.AutoRaid then
             pcall(function()
-                -- ตรวจว่าใน Raid อยู่หรือเปล่า
                 local pg = LP.PlayerGui.Main
                 if pg and pg.Timer and pg.Timer.Visible then
-                    -- ใน Raid → Next Island
                     for i=5,1,-1 do
                         local isl = workspace:FindFirstChild("_WorldOrigin")
                         if isl and isl.Locations:FindFirstChild("Island "..i) then
@@ -488,9 +464,8 @@ task.spawn(function()
                         end
                     end
                 else
-                    -- นอก Raid → เปิด Raid
                     if RS.Remotes.CommF_:InvokeServer("Candies","Check") then
-                        local chip = LP.Backpack:FindFirstChild("Special Microchip") 
+                        local chip = LP.Backpack:FindFirstChild("Special Microchip")
                                     or (LP.Character and LP.Character:FindFirstChild("Special Microchip"))
                         if chip then
                             if WORLD[game.PlaceId] == "Sea 2" then
@@ -520,8 +495,7 @@ task.spawn(function()
                 local h = HRP(); if not h then return end
                 for _,v in pairs(workspace:GetChildren()) do
                     if v.Name:find("Chest") and v:IsA("BasePart") then
-                        local d = (v.Position - h.Position).Magnitude
-                        if d <= 5000 then
+                        if (v.Position - h.Position).Magnitude <= 5000 then
                             h.CFrame = v.CFrame
                             task.wait(0.5)
                         end
@@ -540,20 +514,19 @@ task.spawn(function()
             local tool = c and c:FindFirstChildOfClass("Tool")
             local en = workspace:FindFirstChild("Enemies")
             print("━━━━━━━━━━━━━━━━━━━")
-            print("🔧 Tool: "..(tool and tool.Name or "❌ ไม่มี"))
+            print("🔧 Tool: "..(tool and tool.Name or "❌"))
             print("👾 Mobs: "..#(en and en:GetChildren() or {}))
             print("📜 Quest: "..(HasQuest() and "✅" or "❌").." | "..GetCurrentQuestName())
             print("🎮 Level: "..SafeGet(LP.Data,"Level"))
-            print("💰 Beli: "..FormatNum(SafeGet(LP.Data,"Beli")))
             print("━━━━━━━━━━━━━━━━━━━")
         end
     end
 end)
 
-print("✅ Rbot v9.0 Systems Loaded")
+print("✅ Rbot v10.0 Systems Loaded")
 
 -- ================================================================
--- ========== 🎨 GLASSMORPHISM 2.0 UI ============================
+-- ========== 🎨 UI GLASSMORPHISM 2.0 =============================
 -- ================================================================
 
 local old = game.CoreGui:FindFirstChild("RbotPremium")
@@ -563,22 +536,23 @@ local COLORS = {
     Bg=Color3.fromRGB(6,4,14), Glass=Color3.fromRGB(26,20,40),
     Border=Color3.fromRGB(120,80,200), Purple=Color3.fromRGB(160,80,255),
     Pink=Color3.fromRGB(255,60,180), Cyan=Color3.fromRGB(80,220,255),
-    Green=Color3.fromRGB(80,255,140), Text=Color3.fromRGB(240,235,255),
-    TextDim=Color3.fromRGB(150,140,180),
+    Text=Color3.fromRGB(240,235,255), TextDim=Color3.fromRGB(150,140,180),
 }
 
 local Blur = Instance.new("BlurEffect"); Blur.Size=0; Blur.Parent=Lighting
+
 local SG = Instance.new("ScreenGui")
 SG.Name="RbotPremium"; SG.Parent=game.CoreGui
 SG.ResetOnSpawn=false; SG.IgnoreGuiInset=true
 SG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; SG.DisplayOrder=999
 
--- MAIN
+-- ============ MAIN FRAME ============
 local Main = Instance.new("Frame")
 Main.Size=UDim2.new(0,0,0,0); Main.Position=UDim2.new(0.5,-400,0.5,-280)
 Main.BackgroundColor3=COLORS.Bg; Main.BackgroundTransparency=0.05
 Main.BorderSizePixel=0; Main.ClipsDescendants=false; Main.Parent=SG
-local MC=Instance.new("UICorner"); MC.CornerRadius=UDim.new(0,22); MC.Parent=Main
+
+local MC = Instance.new("UICorner"); MC.CornerRadius=UDim.new(0,22); MC.Parent=Main
 
 -- Animated Glow Border
 local BorderGlow = Instance.new("Frame")
@@ -593,33 +567,60 @@ BGG.Color=ColorSequence.new{
     ColorSequenceKeypoint.new(1,COLORS.Cyan),
 }
 BGG.Parent=BorderGlow
-task.spawn(function() local r=0 while BorderGlow.Parent do r=(r+2)%360 BGG.Rotation=r task.wait(0.05) end end)
+task.spawn(function()
+    local r=0
+    while BorderGlow.Parent do r=(r+2)%360 BGG.Rotation=r task.wait(0.05) end
+end)
 
 local OPEN_SIZE = UDim2.new(0,800,0,560)
 TS:Create(Main, TweenInfo.new(0.8, Enum.EasingStyle.Back), {Size=OPEN_SIZE}):Play()
 TS:Create(Blur, TweenInfo.new(0.7), {Size=16}):Play()
 
--- TOGGLE
-local uiOpen=true; local FloatingBtn
+-- ============ 🔓 TOGGLE SYSTEM (Minimize/Close) ============
+local uiOpen = true
+local FloatingBtn -- forward declaration
+
 local function SetUIVisible(v)
-    uiOpen=v
+    if uiOpen == v then return end
+    uiOpen = v
     if v then
-        Main.Visible=true
-        TS:Create(Main, TweenInfo.new(0.4), {Size=OPEN_SIZE}):Play()
-        TS:Create(Blur, TweenInfo.new(0.3), {Size=16}):Play()
+        -- เปิด UI
+        Main.Visible = true
+        TS:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = OPEN_SIZE, BackgroundTransparency = 0.05
+        }):Play()
+        TS:Create(Blur, TweenInfo.new(0.3), {Size = 16}):Play()
+        if FloatingBtn then
+            TS:Create(FloatingBtn, TweenInfo.new(0.3), {
+                Position = UDim2.new(0, -70, 0.5, -28)
+            }):Play()
+            task.delay(0.3, function()
+                if uiOpen and FloatingBtn then FloatingBtn.Visible = false end
+            end)
+        end
     else
-        TS:Create(Blur, TweenInfo.new(0.3), {Size=0}):Play()
-        local t=TS:Create(Main, TweenInfo.new(0.3), {Size=UDim2.new(0,0,0,0)})
+        -- ย่อ UI (Minimize)
+        TS:Create(Blur, TweenInfo.new(0.3), {Size = 0}):Play()
+        if FloatingBtn then
+            FloatingBtn.Visible = true
+            FloatingBtn.Position = UDim2.new(0, 20, 0.5, -28)
+        end
+        local t = TS:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0)
+        })
         t:Play()
-        t.Completed:Connect(function() if not uiOpen then Main.Visible=false end end)
+        t.Completed:Connect(function()
+            if not uiOpen then Main.Visible = false end
+        end)
     end
 end
 
--- HEADER
+-- ============ HEADER ============
 local Header = Instance.new("Frame")
 Header.Size=UDim2.new(1,0,0,72); Header.BackgroundColor3=Color3.fromRGB(16,12,26)
 Header.BackgroundTransparency=0.35; Header.BorderSizePixel=0; Header.Parent=Main
 local HC=Instance.new("UICorner"); HC.CornerRadius=UDim.new(0,22); HC.Parent=Header
+
 local HLine=Instance.new("Frame")
 HLine.Size=UDim2.new(1,-40,0,2); HLine.Position=UDim2.new(0,20,1,-1)
 HLine.BackgroundColor3=COLORS.Purple; HLine.BorderSizePixel=0; HLine.Parent=Header
@@ -632,7 +633,7 @@ HLG.Color=ColorSequence.new{
 }
 HLG.Parent=HLine
 
--- Logo
+-- Logo (spinning)
 local LogoIcon=Instance.new("Frame")
 LogoIcon.Size=UDim2.new(0,48,0,48); LogoIcon.Position=UDim2.new(0,18,0.5,-24)
 LogoIcon.BackgroundColor3=COLORS.Purple; LogoIcon.BorderSizePixel=0; LogoIcon.Parent=Header
@@ -644,7 +645,10 @@ LIG.Color=ColorSequence.new{
     ColorSequenceKeypoint.new(1,COLORS.Cyan),
 }
 LIG.Rotation=45; LIG.Parent=LogoIcon
-task.spawn(function() local r=45 while LogoIcon.Parent do r=(r+1)%360 LIG.Rotation=r task.wait(0.05) end end)
+task.spawn(function()
+    local r=45
+    while LogoIcon.Parent do r=(r+1)%360 LIG.Rotation=r task.wait(0.05) end
+end)
 local LogoTxt=Instance.new("TextLabel")
 LogoTxt.Size=UDim2.new(1,0,1,0); LogoTxt.BackgroundTransparency=1
 LogoTxt.Text="R"; LogoTxt.TextColor3=Color3.fromRGB(255,255,255)
@@ -653,7 +657,7 @@ LogoTxt.Font=Enum.Font.GothamBlack; LogoTxt.TextSize=26; LogoTxt.Parent=LogoIcon
 -- Title
 local Title=Instance.new("TextLabel")
 Title.Size=UDim2.new(0,400,0,26); Title.Position=UDim2.new(0,78,0,14)
-Title.BackgroundTransparency=1; Title.Text="🔥 RBOT v9.0 ULTIMATE"
+Title.BackgroundTransparency=1; Title.Text="🔥 RBOT v10.0 ULTIMATE"
 Title.TextColor3=COLORS.Text; Title.Font=Enum.Font.GothamBlack
 Title.TextSize=20; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.Parent=Header
 local TG=Instance.new("UIGradient")
@@ -671,7 +675,6 @@ SubTitle.Text=WORLD[game.PlaceId].." • "..LP.Name.." • Lv."..SafeGet(LP.Data
 SubTitle.TextColor3=COLORS.TextDim; SubTitle.Font=Enum.Font.GothamMedium
 SubTitle.TextSize=10; SubTitle.TextXAlignment=Enum.TextXAlignment.Left; SubTitle.Parent=Header
 
--- Live Stats Update
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
@@ -680,22 +683,55 @@ task.spawn(function()
     end
 end)
 
--- Close Btn
+-- ============ ➖ MINIMIZE BUTTON ============
+local MinBtn=Instance.new("TextButton")
+MinBtn.Size=UDim2.new(0,34,0,34); MinBtn.Position=UDim2.new(1,-90,0.5,-17)
+MinBtn.BackgroundColor3=COLORS.Glass; MinBtn.BackgroundTransparency=0.3
+MinBtn.Text="−"; MinBtn.TextColor3=COLORS.Text
+MinBtn.Font=Enum.Font.GothamBold; MinBtn.TextSize=20
+MinBtn.AutoButtonColor=false; MinBtn.Parent=Header
+local MinC=Instance.new("UICorner"); MinC.CornerRadius=UDim.new(1,0); MinC.Parent=MinBtn
+MinBtn.MouseEnter:Connect(function()
+    TS:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency=0.1, BackgroundColor3=COLORS.Purple}):Play()
+end)
+MinBtn.MouseLeave:Connect(function()
+    TS:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency=0.3, BackgroundColor3=COLORS.Glass}):Play()
+end)
+MinBtn.MouseButton1Click:Connect(function()
+    SetUIVisible(false)
+end)
+
+-- ============ ✕ CLOSE BUTTON (ปิดจริง) ============
 local CloseBtn=Instance.new("TextButton")
 CloseBtn.Size=UDim2.new(0,34,0,34); CloseBtn.Position=UDim2.new(1,-46,0.5,-17)
 CloseBtn.BackgroundColor3=COLORS.Glass; CloseBtn.BackgroundTransparency=0.3
 CloseBtn.Text="✕"; CloseBtn.TextColor3=COLORS.Text
-CloseBtn.Font=Enum.Font.GothamBold; CloseBtn.TextSize=14; CloseBtn.Parent=Header
+CloseBtn.Font=Enum.Font.GothamBold; CloseBtn.TextSize=14
+CloseBtn.AutoButtonColor=false; CloseBtn.Parent=Header
 local CBC=Instance.new("UICorner"); CBC.CornerRadius=UDim.new(1,0); CBC.Parent=CloseBtn
 CloseBtn.MouseEnter:Connect(function()
-    TS:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundTransparency=0.1, BackgroundColor3=Color3.fromRGB(255,60,80)}):Play()
+    TS:Create(CloseBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency=0.1, BackgroundColor3=Color3.fromRGB(255,60,80)
+    }):Play()
 end)
 CloseBtn.MouseLeave:Connect(function()
-    TS:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundTransparency=0.3, BackgroundColor3=COLORS.Glass}):Play()
+    TS:Create(CloseBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency=0.3, BackgroundColor3=COLORS.Glass
+    }):Play()
 end)
-CloseBtn.MouseButton1Click:Connect(function() SetUIVisible(false) end)
+CloseBtn.MouseButton1Click:Connect(function()
+    -- ปิดจริง: ลบ UI + Floating + Blur
+    TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
+        Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
+    }):Play()
+    TS:Create(Blur, TweenInfo.new(0.3), {Size=0}):Play()
+    task.wait(0.35)
+    SG:Destroy()
+    Blur:Destroy()
+    print("❌ Rbot v10.0 ปิดแล้ว")
+end)
 
--- SIDEBAR
+-- ============ SIDEBAR ============
 local Sidebar=Instance.new("Frame")
 Sidebar.Size=UDim2.new(0,200,1,-92); Sidebar.Position=UDim2.new(0,16,0,82)
 Sidebar.BackgroundColor3=COLORS.Glass; Sidebar.BackgroundTransparency=0.5
@@ -710,7 +746,7 @@ TabList.BackgroundTransparency=1; TabList.Parent=Sidebar
 local TLLay=Instance.new("UIListLayout")
 TLLay.Parent=TabList; TLLay.SortOrder=Enum.SortOrder.LayoutOrder; TLLay.Padding=UDim.new(0,6)
 
--- CONTENT
+-- ============ CONTENT ============
 local Content=Instance.new("Frame")
 Content.Size=UDim2.new(1,-240,1,-92); Content.Position=UDim2.new(0,226,0,82)
 Content.BackgroundColor3=COLORS.Glass; Content.BackgroundTransparency=0.5
@@ -730,7 +766,7 @@ SLLay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize=UDim2.new(0,0,0,SLLay.AbsoluteContentSize.Y + 20)
 end)
 
--- DRAG
+-- ============ DRAG ============
 local dragging, dragStart, startPos
 Header.InputBegan:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
@@ -751,8 +787,9 @@ UIS.InputChanged:Connect(function(i)
     end
 end)
 
--- UI FACTORY
+-- ============ UI FACTORY ============
 local Tabs={}; local FirstTab=false
+
 local function CreateTab(name, icon)
     local Btn=Instance.new("TextButton")
     Btn.Size=UDim2.new(1,0,0,44); Btn.BackgroundColor3=COLORS.Glass
@@ -833,8 +870,12 @@ local function Toggle(parent, name, desc, key)
     Btn.Text=""; Btn.Parent=F
     Btn.MouseButton1Click:Connect(function()
         CFG[key]=not CFG[key]
-        TS:Create(Bg, TweenInfo.new(0.2), {BackgroundColor3=CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)}):Play()
-        TS:Create(Dot, TweenInfo.new(0.2), {Position=CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)}):Play()
+        TS:Create(Bg, TweenInfo.new(0.2), {
+            BackgroundColor3=CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)
+        }):Play()
+        TS:Create(Dot, TweenInfo.new(0.2), {
+            Position=CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
+        }):Play()
     end)
 end
 
@@ -927,7 +968,7 @@ local function Button(parent, name, desc, callback)
     Btn.MouseButton1Click:Connect(function() pcall(callback) end)
 end
 
--- TABS
+-- ================== TABS ==================
 local HomeTab=CreateTab("หน้าหลัก","🏠")
 local FarmTab=CreateTab("ฟาร์ม","🌾")
 local BossTab=CreateTab("บอส & Raid","👹")
@@ -952,19 +993,21 @@ Button(HomeTab, "📜 Force รับเควสต์", "บังคับร
     currentQuest=nil; lastQuestAttempt=0; GetQuest()
 end)
 Button(HomeTab, "🎁 Redeem All Codes", "ใส่โค้ด Blox Fruits ทั้งหมด", function()
-    local codes = {"Sub2Fer999","Enyu_is_Pro","Magicbus","JCWK","Starcodeheo","Bluxxy","fudd10","fudd10_v2",
-                   "Sub2OfficialNoobie","SUB2GAMERROBOT_EXP1","Sub2NoobMaster123","Sub2UncleKizaru",
-                   "Sub2Daigrock","Axiore","TantaiGaming","StrawHatMaine","Sub2CaptainMaui",
-                   "Kittgaming","Sub2Gamerrobot_Reset1","FUDD10","BIGNEWS","THEGREATACE"}
+    local codes = {"Sub2Fer999","Enyu_is_Pro","Magicbus","JCWK","Starcodeheo",
+                   "Bluxxy","fudd10","fudd10_v2","Sub2OfficialNoobie",
+                   "SUB2GAMERROBOT_EXP1","Sub2NoobMaster123","Sub2UncleKizaru",
+                   "Sub2Daigrock","Axiore","TantaiGaming","StrawHatMaine",
+                   "Sub2CaptainMaui","Kittgaming","Sub2Gamerrobot_Reset1",
+                   "FUDD10","BIGNEWS","THEGREATACE"}
     for _,code in pairs(codes) do
         pcall(function() RS.Remotes.Redeem:InvokeServer(code) end)
         task.wait(0.5)
     end
-    print("✅ Redeemed all codes")
+    print("✅ Redeemed all")
 end)
 
 -- FARM
-Section(FarmTab, "🎯 Auto Farm System")
+Section(FarmTab, "🎯 Auto Farm")
 Toggle(FarmTab, "Auto Farm ⭐", "ฟาร์ม + ตี + ย้ายเกาะ", "AutoFarm")
 Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมัติ", "AutoQuest")
 Toggle(FarmTab, "Auto Island", "ย้ายเกาะตาม Level", "AutoIsland")
@@ -972,17 +1015,17 @@ Toggle(FarmTab, "Auto Click ⭐", "คลิก 5-way bypass", "AutoClick")
 Toggle(FarmTab, "Auto Equip", "ติดอาวุธอัตโนมัติ", "AutoEquip")
 Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมตัว", "BringMobs")
 Toggle(FarmTab, "Magnet", "ดึงทุกอย่างเข้าหา", "Magnet")
-Toggle(FarmTab, "Auto Chest 💎", "เก็บหีบทุกเกาะ (ระยะ 5000)", "AutoChest")
+Toggle(FarmTab, "Auto Chest 💎", "เก็บหีบทุกเกาะ", "AutoChest")
 Slider(FarmTab, "Farm Distance", 5, 100, "Distance")
 
 -- BOSS
 Section(BossTab, "👹 Auto Boss System")
-Toggle(BossTab, "Auto Boss", "ตีบอสทุกตัวที่เจอ", "AutoBoss")
-Toggle(BossTab, "Auto Elite Hunter", "ทำเควสต์ปืน Yama/Tushita", "AutoEliteHunter")
+Toggle(BossTab, "Auto Boss", "ตีบอสทุกตัว", "AutoBoss")
+Toggle(BossTab, "Auto Elite Hunter", "ปืน Yama/Tushita", "AutoEliteHunter")
 Toggle(BossTab, "Auto Raid", "เปิด Raid + Next Island", "AutoRaid")
 
 -- SKILL
-Section(SkillTab, "🥋 Skill & Combat")
+Section(SkillTab, "🥋 Combat")
 Toggle(SkillTab, "Auto Skill", "กด Z X C V F E Q R", "AutoSkill")
 Toggle(SkillTab, "Auto Haki", "ใช้ Buso อัตโนมัติ", "AutoHaki")
 Toggle(SkillTab, "Fast Attack", "Bypass Cooldown", "FastAttack")
@@ -996,18 +1039,31 @@ Section(SetTab, "⚙️ System")
 Button(SetTab, "🚀 Rejoin Server", "กลับเซิร์ฟเดิม", function()
     TPS:Teleport(game.PlaceId, LP)
 end)
-Button(SetTab, "❌ ปิด UI", "ปิดหน้าต่าง", function() SetUIVisible(false) end)
+Button(SetTab, "❌ ปิด UI ทั้งหมด", "ปิดหน้าต่างจริง", function()
+    CloseBtn:Destroy()
+    -- เรียกโค้ดปิดจริง
+    TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
+        Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
+    }):Play()
+    TS:Create(Blur, TweenInfo.new(0.3), {Size=0}):Play()
+    task.wait(0.35)
+    SG:Destroy()
+    Blur:Destroy()
+end)
 
--- FLOATING BUTTON
+-- ============ 🟣 FLOATING BUTTON ============
 FloatingBtn = Instance.new("TextButton")
-FloatingBtn.Size=UDim2.new(0,60,0,60); FloatingBtn.Position=UDim2.new(0,-70,0.5,-30)
+FloatingBtn.Size=UDim2.new(0,56,0,56)
+FloatingBtn.Position=UDim2.new(0,-70,0.5,-28)
 FloatingBtn.BackgroundColor3=COLORS.Purple
 FloatingBtn.BorderSizePixel=0; FloatingBtn.Text="R"
 FloatingBtn.TextColor3=Color3.fromRGB(255,255,255)
-FloatingBtn.Font=Enum.Font.GothamBlack; FloatingBtn.TextSize=26
+FloatingBtn.Font=Enum.Font.GothamBlack; FloatingBtn.TextSize=24
 FloatingBtn.AutoButtonColor=false; FloatingBtn.Visible=false
 FloatingBtn.ZIndex=999; FloatingBtn.Parent=SG
+
 local FBC=Instance.new("UICorner"); FBC.CornerRadius=UDim.new(1,0); FBC.Parent=FloatingBtn
+
 local FBGrad=Instance.new("UIGradient")
 FBGrad.Color=ColorSequence.new{
     ColorSequenceKeypoint.new(0,COLORS.Purple),
@@ -1015,32 +1071,97 @@ FBGrad.Color=ColorSequence.new{
     ColorSequenceKeypoint.new(1,COLORS.Cyan),
 }
 FBGrad.Rotation=45; FBGrad.Parent=FloatingBtn
+
 task.spawn(function()
     local r=45
     while FBGrad.Parent do r=(r+2)%360 FBGrad.Rotation=r task.wait(0.05) end
 end)
+
 local FBStroke=Instance.new("UIStroke")
-FBStroke.Color=COLORS.Pink; FBStroke.Thickness=2; FBStroke.Transparency=0.4; FBStroke.Parent=FloatingBtn
-FloatingBtn.MouseButton1Click:Connect(function() SetUIVisible(true) end)
+FBStroke.Color=COLORS.Pink; FBStroke.Thickness=2; FBStroke.Transparency=0.4
+FBStroke.Parent=FloatingBtn
+
+-- Glow
+local FBGlow=Instance.new("ImageLabel")
+FBGlow.Size=UDim2.new(1,30,1,30); FBGlow.Position=UDim2.new(0,-15,0,-15)
+FBGlow.BackgroundTransparency=1
+FBGlow.Image="rbxassetid://4996891970"
+FBGlow.ImageColor3=COLORS.Purple
+FBGlow.ImageTransparency=0.4
+FBGlow.ScaleType=Enum.ScaleType.Slice
+FBGlow.SliceCenter=Rect.new(20,20,280,280)
+FBGlow.ZIndex=-1; FBGlow.Parent=FloatingBtn
+
+-- Pulse animation
 task.spawn(function()
-    while task.wait(0.3) do
-        if FloatingBtn then FloatingBtn.Visible = not uiOpen end
+    while FloatingBtn and FloatingBtn.Parent do
+        task.wait(2)
+        if FloatingBtn.Visible then
+            TS:Create(FloatingBtn, TweenInfo.new(0.6, Enum.EasingStyle.Sine), {
+                Size=UDim2.new(0,66,0,66)
+            }):Play()
+            task.wait(0.6)
+            if FloatingBtn then
+                TS:Create(FloatingBtn, TweenInfo.new(0.6, Enum.EasingStyle.Sine), {
+                    Size=UDim2.new(0,56,0,56)
+                }):Play()
+            end
+        end
     end
 end)
 
--- KEYBIND
-UIS.InputBegan:Connect(function(i, g)
-    if g then return end
-    if i.KeyCode==Enum.KeyCode.RightControl then SetUIVisible(not uiOpen) end
+-- Drag
+local fbDrag, fbStart, fbStartPos
+FloatingBtn.InputBegan:Connect(function(i)
+    if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+        fbDrag=true; fbStart=i.Position; fbStartPos=FloatingBtn.Position
+    end
+end)
+FloatingBtn.InputEnded:Connect(function(i)
+    if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+        fbDrag=false
+    end
+end)
+UIS.InputChanged:Connect(function(i)
+    if fbDrag and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+        FloatingBtn.Position=UDim2.new(
+            fbStartPos.X.Scale, fbStartPos.X.Offset+(i.Position.X-fbStart.X),
+            fbStartPos.Y.Scale, fbStartPos.Y.Offset+(i.Position.Y-fbStart.Y)
+        )
+    end
 end)
 
--- ================== SAVE/LOAD CONFIG ==================
+-- Click → เปิด UI
+FloatingBtn.MouseButton1Click:Connect(function()
+    SetUIVisible(true)
+end)
+
+-- ============ ⌨️ KEYBIND ============
+UIS.InputBegan:Connect(function(i, g)
+    if g then return end
+    -- Right Ctrl = ย่อ/ขยาย
+    if i.KeyCode==Enum.KeyCode.RightControl then
+        SetUIVisible(not uiOpen)
+    end
+    -- Right Shift = ปิดจริง
+    if i.KeyCode==Enum.KeyCode.RightShift then
+        TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
+            Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
+        }):Play()
+        TS:Create(Blur, TweenInfo.new(0.3), {Size=0}):Play()
+        task.wait(0.35)
+        SG:Destroy()
+        Blur:Destroy()
+    end
+end)
+
+-- ============ SAVE/LOAD CONFIG ============
 if writefile and readfile then
     task.spawn(function()
         task.wait(2)
         pcall(function()
-            if isfile and isfile("rbot_v9_cfg.json") then
-                local data = HttpService:JSONDecode(readfile("rbot_v9_cfg.json"))
+            if isfile and isfile("rbot_v10_cfg.json") then
+                local data = HttpService:JSONDecode(readfile("rbot_v10_cfg.json"))
                 for k,v in pairs(data) do if CFG[k]~=nil then CFG[k]=v end end
                 print("✅ Loaded config")
             end
@@ -1048,14 +1169,14 @@ if writefile and readfile then
     end)
     game:BindToClose(function()
         pcall(function()
-            writefile("rbot_v9_cfg.json", HttpService:JSONEncode(CFG))
+            writefile("rbot_v10_cfg.json", HttpService:JSONEncode(CFG))
         end)
     end)
 end
 
 print("═══════════════════════════════════════════════")
-print("🔥 Rbot v9.0 ULTIMATE พร้อมใช้งาน!")
+print("🔥 Rbot v10.0 ULTIMATE พร้อมใช้งาน!")
+print("✅ Minimize (➖) + Close (✕) + Floating (🟣)")
 print("✅ Level 1-3000 | Sea 1-4 | 150+ Quests")
-print("✅ 5-Way Click | Auto Boss | Elite Hunter | Raid")
-print("⌨️ Right Ctrl = เปิด/ปิด UI")
+print("⌨️ RightCtrl = ย่อ/ขยาย | RightShift = ปิดจริง")
 print("═══════════════════════════════════════════════")
