@@ -1,10 +1,10 @@
 --[[
-    🔥 Rbot Premium v10.0 - ULTIMATE 2026
-    ✅ Minimize (➖) + Close (✕) + Floating Button (🟣)
+    🔥 Rbot Premium v11.0 - ULTIMATE EDITION
+    ✅ Minimize (➖) + Expand (✚) + Close (✕)
+    ✅ Bring Mobs ไม่ดึงขึ้นฟ้า
     ✅ Level 1-3000 | Sea 1-4 | 150+ Quests
-    ✅ Auto Farm + Quest + Island + Boss + Raid + Elite + Chest
-    ✅ 5-Way Click Bypass | Fast Attack | Bring Mobs
-    ✅ Animated Glow UI | Save/Load Config
+    ✅ Auto Farm + Boss + Raid + Elite Hunter + Chest
+    ✅ 5-Way Safe Click (ไม่กินเมาส์)
 ]]
 
 -- ================== SERVICES ==================
@@ -20,7 +20,7 @@ local TPS = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local LP = Players.LocalPlayer
 
-print("🔥 Rbot v10.0 ULTIMATE Loading...")
+print("🔥 Rbot v11.0 Loading...")
 
 -- ================== CHECK ==================
 local WORLD = {
@@ -35,10 +35,10 @@ local CFG = {
     AutoFarm=false, AutoQuest=true, AutoIsland=true, AutoClick=true,
     AutoSkill=true, AutoHaki=true, AutoEquip=true,
     FastAttack=true, BringMobs=true, Magnet=false,
-    AutoBoss=false, AutoEliteHunter=false, AutoRaid=false,
-    AutoChest=false, NoClip=false,
-    WalkSpeed=16, JumpPower=50, Distance=30, ClickSpeed=0.03,
+    AutoBoss=false, AutoEliteHunter=false, AutoRaid=false, AutoChest=false,
+    NoClip=false, WalkSpeed=16, JumpPower=50, Distance=30, ClickSpeed=0.03,
 }
+local uiHovering = false  -- ✅ Global flag ป้องกัน UI กดไม่ได้
 
 -- ================== HELPERS ==================
 local cachedChar, cachedHRP, cachedHum
@@ -180,7 +180,7 @@ local function GetQuest()
     return true
 end
 
--- ================== ⚡ 5-WAY CLICK ==================
+-- ================== ⚡ SMART CLICK (ไม่กินเมาส์) ==================
 local lastClick = 0
 local function GetTool()
     local c = Char(); if not c then return nil end
@@ -201,23 +201,36 @@ local function HasEnemy(r)
     end
     return false
 end
-local function Click()
-    local now = tick()
-    if now - lastClick < CFG.ClickSpeed then return end
-    lastClick = now
-    local cam = workspace.CurrentCamera; if not cam then return end
-    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-    pcall(function() local t=GetTool(); if t then t:Activate() end end)
-    pcall(function() VU:CaptureController(); VU:ClickButton1(center) end)
-    pcall(function() VU:CaptureController(); VU:ClickButton1(Vector2.new(0,0)) end)
-    pcall(function()
-        VIM:SendMouseButtonEvent(center.X,center.Y,0,true,game,1)
-        VIM:SendMouseButtonEvent(center.X,center.Y,0,false,game,1)
-    end)
-    pcall(function() if mouse1click then mouse1click() end end)
-end
+
+-- ✅ Click ปลอดภัย: ใช้ Tool:Activate() เป็นหลัก
 RunService.Heartbeat:Connect(function()
-    if CFG.AutoClick and CFG.AutoFarm and GetTool() and HasEnemy(80) then Click() end
+    -- ✅ ป้องกัน: เมาส์บน UI → หยุดคลิก
+    if uiHovering then return end
+    if not CFG.AutoClick then return end
+    if not GetTool() then return end
+    
+    -- Method 1: Tool:Activate() — ไม่กินเมาส์
+    pcall(function()
+        local t = GetTool()
+        if t then t:Activate() end
+    end)
+    
+    -- Method 2: mouse1click (executor API)
+    pcall(function()
+        if mouse1click then mouse1click() end
+    end)
+    
+    -- Method 3 (เฉพาะตอน AutoFarm + มี Enemy): VU
+    if CFG.AutoFarm and HasEnemy(80) then
+        local now = tick()
+        if now - lastClick >= CFG.ClickSpeed then
+            lastClick = now
+            pcall(function()
+                VU:CaptureController()
+                VU:ClickButton1(Vector2.new(0, 0))
+            end)
+        end
+    end
 end)
 
 -- ================== ⌨️ AUTO SKILL ==================
@@ -319,21 +332,47 @@ task.spawn(function()
     end
 end)
 
--- ================== 🧲 BRING MOBS ==================
+-- ================== 🧲 BRING MOBS (แก้ไม่ขึ้นฟ้า) ==================
+-- ✅ ใช้ CFrame + AssemblyLinearVelocity = 0 + PlatformStand + WalkSpeed = 0
+-- ✅ ดึงมารวมรอบตัว ระยะ 12 studs ที่ระดับพื้นเท่ากับ HRP
 task.spawn(function()
     while task.wait(0.05) do
         if (CFG.BringMobs or CFG.Magnet) and CFG.AutoFarm then
             pcall(function()
                 local h = HRP(); if not h then return end
                 local en = workspace:FindFirstChild("Enemies"); if not en then return end
+                
                 for _,m in pairs(en:GetChildren()) do
                     local mh = m:FindFirstChild("HumanoidRootPart")
                     local mhum = m:FindFirstChild("Humanoid")
-                    if mh and mhum and mhum.Health > 0 and (mh.Position-h.Position).Magnitude <= 200 then
-                        mh.CFrame = CFrame.new(h.Position + Vector3.new(math.random(-12,12),3,math.random(-12,12)))
-                        mh.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                        mhum.WalkSpeed = 0
-                        mhum.PlatformStand = true
+                    if mh and mhum and mhum.Health > 0 then
+                        local dist = (mh.Position - h.Position).Magnitude
+                        if dist <= 200 then
+                            -- ✅ คำนวณตำแหน่งเป้าหมาย: รอบตัวที่ระดับพื้น
+                            local angle = math.random() * math.pi * 2
+                            local radius = math.random(8, 14)
+                            local targetPos = h.Position + Vector3.new(
+                                math.cos(angle) * radius,
+                                0,  -- ⭐ ระดับพื้นเท่ากับ HRP ไม่ขึ้นฟ้า!
+                                math.sin(angle) * radius
+                            )
+                            
+                            -- ✅ ใช้ CFrame.new() เดี่ยวๆ เพื่อไม่ให้ยกขึ้น
+                            mh.CFrame = CFrame.new(targetPos)
+                            
+                            -- ✅ ตั้งความเร็วเป็น 0 ป้องกันการลอย/ลอย
+                            mh.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                            mh.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                            
+                            -- ✅ ปิด physics ป้องกันการลอยขึ้น
+                            mh.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.01, 0.01, 0, 0)
+                            
+                            -- ✅ หยุดการเคลื่อนที่ของมอน
+                            mhum.WalkSpeed = 0
+                            mhum.JumpPower = 0
+                            mhum.PlatformStand = true  -- ⭐ ป้องกันการยืนและลอย
+                            mhum:ChangeState(Enum.HumanoidStateType.Physics)
+                        end
                     end
                 end
             end)
@@ -523,7 +562,7 @@ task.spawn(function()
     end
 end)
 
-print("✅ Rbot v10.0 Systems Loaded")
+print("✅ Rbot v11.0 Systems Loaded")
 
 -- ================================================================
 -- ========== 🎨 UI GLASSMORPHISM 2.0 =============================
@@ -546,12 +585,11 @@ SG.Name="RbotPremium"; SG.Parent=game.CoreGui
 SG.ResetOnSpawn=false; SG.IgnoreGuiInset=true
 SG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; SG.DisplayOrder=999
 
--- ============ MAIN FRAME ============
+-- ============ MAIN ============
 local Main = Instance.new("Frame")
 Main.Size=UDim2.new(0,0,0,0); Main.Position=UDim2.new(0.5,-400,0.5,-280)
 Main.BackgroundColor3=COLORS.Bg; Main.BackgroundTransparency=0.05
 Main.BorderSizePixel=0; Main.ClipsDescendants=false; Main.Parent=SG
-
 local MC = Instance.new("UICorner"); MC.CornerRadius=UDim.new(0,22); MC.Parent=Main
 
 -- Animated Glow Border
@@ -576,15 +614,13 @@ local OPEN_SIZE = UDim2.new(0,800,0,560)
 TS:Create(Main, TweenInfo.new(0.8, Enum.EasingStyle.Back), {Size=OPEN_SIZE}):Play()
 TS:Create(Blur, TweenInfo.new(0.7), {Size=16}):Play()
 
--- ============ 🔓 TOGGLE SYSTEM (Minimize/Close) ============
+-- ============ 🔓 TOGGLE SYSTEM ============
 local uiOpen = true
-local FloatingBtn -- forward declaration
-
+local FloatingBtn
 local function SetUIVisible(v)
     if uiOpen == v then return end
     uiOpen = v
     if v then
-        -- เปิด UI
         Main.Visible = true
         TS:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Size = OPEN_SIZE, BackgroundTransparency = 0.05
@@ -599,7 +635,6 @@ local function SetUIVisible(v)
             end)
         end
     else
-        -- ย่อ UI (Minimize)
         TS:Create(Blur, TweenInfo.new(0.3), {Size = 0}):Play()
         if FloatingBtn then
             FloatingBtn.Visible = true
@@ -633,7 +668,7 @@ HLG.Color=ColorSequence.new{
 }
 HLG.Parent=HLine
 
--- Logo (spinning)
+-- Logo
 local LogoIcon=Instance.new("Frame")
 LogoIcon.Size=UDim2.new(0,48,0,48); LogoIcon.Position=UDim2.new(0,18,0.5,-24)
 LogoIcon.BackgroundColor3=COLORS.Purple; LogoIcon.BorderSizePixel=0; LogoIcon.Parent=Header
@@ -657,7 +692,7 @@ LogoTxt.Font=Enum.Font.GothamBlack; LogoTxt.TextSize=26; LogoTxt.Parent=LogoIcon
 -- Title
 local Title=Instance.new("TextLabel")
 Title.Size=UDim2.new(0,400,0,26); Title.Position=UDim2.new(0,78,0,14)
-Title.BackgroundTransparency=1; Title.Text="🔥 RBOT v10.0 ULTIMATE"
+Title.BackgroundTransparency=1; Title.Text="🔥 RBOT v11.0 ULTIMATE"
 Title.TextColor3=COLORS.Text; Title.Font=Enum.Font.GothamBlack
 Title.TextSize=20; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.Parent=Header
 local TG=Instance.new("UIGradient")
@@ -683,24 +718,6 @@ task.spawn(function()
     end
 end)
 
--- ============ ➖ MINIMIZE BUTTON ============
-local MinBtn=Instance.new("TextButton")
-MinBtn.Size=UDim2.new(0,34,0,34); MinBtn.Position=UDim2.new(1,-90,0.5,-17)
-MinBtn.BackgroundColor3=COLORS.Glass; MinBtn.BackgroundTransparency=0.3
-MinBtn.Text="−"; MinBtn.TextColor3=COLORS.Text
-MinBtn.Font=Enum.Font.GothamBold; MinBtn.TextSize=20
-MinBtn.AutoButtonColor=false; MinBtn.Parent=Header
-local MinC=Instance.new("UICorner"); MinC.CornerRadius=UDim.new(1,0); MinC.Parent=MinBtn
-MinBtn.MouseEnter:Connect(function()
-    TS:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency=0.1, BackgroundColor3=COLORS.Purple}):Play()
-end)
-MinBtn.MouseLeave:Connect(function()
-    TS:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency=0.3, BackgroundColor3=COLORS.Glass}):Play()
-end)
-MinBtn.MouseButton1Click:Connect(function()
-    SetUIVisible(false)
-end)
-
 -- ============ ✕ CLOSE BUTTON (ปิดจริง) ============
 local CloseBtn=Instance.new("TextButton")
 CloseBtn.Size=UDim2.new(0,34,0,34); CloseBtn.Position=UDim2.new(1,-46,0.5,-17)
@@ -720,7 +737,6 @@ CloseBtn.MouseLeave:Connect(function()
     }):Play()
 end)
 CloseBtn.MouseButton1Click:Connect(function()
-    -- ปิดจริง: ลบ UI + Floating + Blur
     TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
         Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
     }):Play()
@@ -728,7 +744,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     task.wait(0.35)
     SG:Destroy()
     Blur:Destroy()
-    print("❌ Rbot v10.0 ปิดแล้ว")
+    print("❌ Rbot v11.0 ปิดแล้ว")
 end)
 
 -- ============ SIDEBAR ============
@@ -745,6 +761,88 @@ TabList.Size=UDim2.new(1,-16,1,-16); TabList.Position=UDim2.new(0,8,0,8)
 TabList.BackgroundTransparency=1; TabList.Parent=Sidebar
 local TLLay=Instance.new("UIListLayout")
 TLLay.Parent=TabList; TLLay.SortOrder=Enum.SortOrder.LayoutOrder; TLLay.Padding=UDim.new(0,6)
+
+-- ============ 🎛️ CONTROL PANEL (➖✚) ============
+local ControlPanel = Instance.new("Frame")
+ControlPanel.Size = UDim2.new(1, 0, 0, 46)
+ControlPanel.BackgroundColor3 = COLORS.Glass
+ControlPanel.BackgroundTransparency = 0.4
+ControlPanel.BorderSizePixel = 0
+ControlPanel.LayoutOrder = -1  -- ⭐ อยู่บนสุด
+ControlPanel.Parent = TabList
+
+local CPC = Instance.new("UICorner")
+CPC.CornerRadius = UDim.new(0, 10)
+CPC.Parent = ControlPanel
+
+local CPStroke = Instance.new("UIStroke")
+CPStroke.Color = COLORS.Border
+CPStroke.Thickness = 1
+CPStroke.Transparency = 0.6
+CPStroke.Parent = ControlPanel
+
+-- ✅ ปุ่ม ➖ ย่อ
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0.5, -6, 1, -12)
+MinBtn.Position = UDim2.new(0, 6, 0, 6)
+MinBtn.BackgroundColor3 = COLORS.Purple
+MinBtn.BackgroundTransparency = 0.2
+MinBtn.Text = "➖"
+MinBtn.TextColor3 = COLORS.Text
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 16
+MinBtn.AutoButtonColor = false
+MinBtn.Parent = ControlPanel
+
+local MinBtnC = Instance.new("UICorner")
+MinBtnC.CornerRadius = UDim.new(0, 8)
+MinBtnC.Parent = MinBtn
+
+MinBtn.MouseEnter:Connect(function()
+    TS:Create(MinBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.05, BackgroundColor3 = COLORS.Purple
+    }):Play()
+end)
+MinBtn.MouseLeave:Connect(function()
+    TS:Create(MinBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.2, BackgroundColor3 = COLORS.Purple
+    }):Play()
+end)
+MinBtn.MouseButton1Click:Connect(function()
+    SetUIVisible(false)  -- ✅ ย่อ → Floating Button
+end)
+
+-- ✅ ปุ่ม ✚ ขยาย
+local ExpBtn = Instance.new("TextButton")
+ExpBtn.Size = UDim2.new(0.5, -6, 1, -12)
+ExpBtn.Position = UDim2.new(0.5, 0, 0, 6)
+ExpBtn.BackgroundColor3 = COLORS.Cyan
+ExpBtn.BackgroundTransparency = 0.2
+ExpBtn.Text = "✚"
+ExpBtn.TextColor3 = COLORS.Text
+ExpBtn.Font = Enum.Font.GothamBold
+ExpBtn.TextSize = 16
+ExpBtn.AutoButtonColor = false
+ExpBtn.Parent = ControlPanel
+
+local ExpBtnC = Instance.new("UICorner")
+ExpBtnC.CornerRadius = UDim.new(0, 8)
+ExpBtnC.Parent = ExpBtn
+
+ExpBtn.MouseEnter:Connect(function()
+    TS:Create(ExpBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.05, BackgroundColor3 = COLORS.Cyan
+    }):Play()
+end)
+ExpBtn.MouseLeave:Connect(function()
+    TS:Create(ExpBtn, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.2, BackgroundColor3 = COLORS.Cyan
+    }):Play()
+end)
+ExpBtn.MouseButton1Click:Connect(function()
+    -- ✅ กดแล้วย่อ UI ตัวเองเลย (ทำเหมือนเป็นปุ่ม toggle)
+    SetUIVisible(false)
+end)
 
 -- ============ CONTENT ============
 local Content=Instance.new("Frame")
@@ -765,6 +863,17 @@ SLLay.Parent=Scroll; SLLay.SortOrder=Enum.SortOrder.LayoutOrder; SLLay.Padding=U
 SLLay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize=UDim2.new(0,0,0,SLLay.AbsoluteContentSize.Y + 20)
 end)
+
+-- ============ ✅ UI HOVER LOCK ============
+local function SetupUIHoverLock(frame)
+    frame.MouseEnter:Connect(function() uiHovering = true end)
+    frame.MouseLeave:Connect(function() uiHovering = false end)
+end
+SetupUIHoverLock(Main)
+SetupUIHoverLock(Header)
+SetupUIHoverLock(Sidebar)
+SetupUIHoverLock(Content)
+SetupUIHoverLock(ControlPanel)
 
 -- ============ DRAG ============
 local dragging, dragStart, startPos
@@ -850,15 +959,6 @@ local function Toggle(parent, name, desc, key)
     Bg.BackgroundColor3=CFG[key] and COLORS.Purple or Color3.fromRGB(48,45,62)
     Bg.BorderSizePixel=0; Bg.Parent=F
     local bgc=Instance.new("UICorner"); bgc.CornerRadius=UDim.new(1,0); bgc.Parent=Bg
-    local G
-    if CFG[key] then
-        G=Instance.new("UIGradient")
-        G.Color=ColorSequence.new{
-            ColorSequenceKeypoint.new(0,COLORS.Purple),
-            ColorSequenceKeypoint.new(1,COLORS.Pink),
-        }
-        G.Parent=Bg
-    end
     local Dot=Instance.new("Frame")
     Dot.Size=UDim2.new(0,20,0,20)
     Dot.Position=CFG[key] and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
@@ -1013,7 +1113,7 @@ Toggle(FarmTab, "Auto Quest", "รับเควสต์อัตโนมั�
 Toggle(FarmTab, "Auto Island", "ย้ายเกาะตาม Level", "AutoIsland")
 Toggle(FarmTab, "Auto Click ⭐", "คลิก 5-way bypass", "AutoClick")
 Toggle(FarmTab, "Auto Equip", "ติดอาวุธอัตโนมัติ", "AutoEquip")
-Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมตัว", "BringMobs")
+Toggle(FarmTab, "Bring Mobs", "ดึงมอนมารวมตัว (ไม่ขึ้นฟ้า)", "BringMobs")
 Toggle(FarmTab, "Magnet", "ดึงทุกอย่างเข้าหา", "Magnet")
 Toggle(FarmTab, "Auto Chest 💎", "เก็บหีบทุกเกาะ", "AutoChest")
 Slider(FarmTab, "Farm Distance", 5, 100, "Distance")
@@ -1040,8 +1140,6 @@ Button(SetTab, "🚀 Rejoin Server", "กลับเซิร์ฟเดิม
     TPS:Teleport(game.PlaceId, LP)
 end)
 Button(SetTab, "❌ ปิด UI ทั้งหมด", "ปิดหน้าต่างจริง", function()
-    CloseBtn:Destroy()
-    -- เรียกโค้ดปิดจริง
     TS:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
         Size=UDim2.new(0,0,0,0), BackgroundTransparency=1
     }):Play()
@@ -1051,12 +1149,12 @@ Button(SetTab, "❌ ปิด UI ทั้งหมด", "ปิดหน้า�
     Blur:Destroy()
 end)
 
--- ============ 🟣 FLOATING BUTTON ============
+-- ============ 🟣 FLOATING BUTTON (➖✚) ============
 FloatingBtn = Instance.new("TextButton")
 FloatingBtn.Size=UDim2.new(0,56,0,56)
 FloatingBtn.Position=UDim2.new(0,-70,0.5,-28)
 FloatingBtn.BackgroundColor3=COLORS.Purple
-FloatingBtn.BorderSizePixel=0; FloatingBtn.Text="R"
+FloatingBtn.BorderSizePixel=0; FloatingBtn.Text="✚"
 FloatingBtn.TextColor3=Color3.fromRGB(255,255,255)
 FloatingBtn.Font=Enum.Font.GothamBlack; FloatingBtn.TextSize=24
 FloatingBtn.AutoButtonColor=false; FloatingBtn.Visible=false
@@ -1092,7 +1190,7 @@ FBGlow.ScaleType=Enum.ScaleType.Slice
 FBGlow.SliceCenter=Rect.new(20,20,280,280)
 FBGlow.ZIndex=-1; FBGlow.Parent=FloatingBtn
 
--- Pulse animation
+-- Pulse
 task.spawn(function()
     while FloatingBtn and FloatingBtn.Parent do
         task.wait(2)
@@ -1115,8 +1213,7 @@ local fbDrag, fbStart, fbStartPos
 FloatingBtn.InputBegan:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
         fbDrag=true; fbStart=i.Position; fbStartPos=FloatingBtn.Position
-    end
-end)
+    endend)
 FloatingBtn.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
         fbDrag=false
@@ -1139,7 +1236,7 @@ end)
 -- ============ ⌨️ KEYBIND ============
 UIS.InputBegan:Connect(function(i, g)
     if g then return end
-    -- Right Ctrl = ย่อ/ขยาย
+    -- Right Ctrl = Toggle ย่อ/ขยาย
     if i.KeyCode==Enum.KeyCode.RightControl then
         SetUIVisible(not uiOpen)
     end
@@ -1160,8 +1257,8 @@ if writefile and readfile then
     task.spawn(function()
         task.wait(2)
         pcall(function()
-            if isfile and isfile("rbot_v10_cfg.json") then
-                local data = HttpService:JSONDecode(readfile("rbot_v10_cfg.json"))
+            if isfile and isfile("rbot_v11_cfg.json") then
+                local data = HttpService:JSONDecode(readfile("rbot_v11_cfg.json"))
                 for k,v in pairs(data) do if CFG[k]~=nil then CFG[k]=v end end
                 print("✅ Loaded config")
             end
@@ -1169,14 +1266,14 @@ if writefile and readfile then
     end)
     game:BindToClose(function()
         pcall(function()
-            writefile("rbot_v10_cfg.json", HttpService:JSONEncode(CFG))
+            writefile("rbot_v11_cfg.json", HttpService:JSONEncode(CFG))
         end)
     end)
 end
 
 print("═══════════════════════════════════════════════")
-print("🔥 Rbot v10.0 ULTIMATE พร้อมใช้งาน!")
-print("✅ Minimize (➖) + Close (✕) + Floating (🟣)")
-print("✅ Level 1-3000 | Sea 1-4 | 150+ Quests")
+print("🔥 Rbot v11.0 ULTIMATE พร้อมใช้งาน!")
+print("✅ Bring Mobs ไม่ขึ้นฟ้าแล้ว (แก้แล้ว)")
+print("✅ ➖✚ ใน Sidebar + ✕ Header + 🟣 Floating")
 print("⌨️ RightCtrl = ย่อ/ขยาย | RightShift = ปิดจริง")
 print("═══════════════════════════════════════════════")
