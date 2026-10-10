@@ -1,4 +1,4 @@
--- Rbot Hud : UI ระบบฟาร์มแบบสมบูรณ์ (รวมลูปฟาร์ม + ลากได้ + โลโก้ซ้ายบน)
+-- Rbot Hud : UI ระบบฟาร์ม + ปรับความเร็ว + เลื่อนขึ้นลงได้ (ScrollingFrame) + โลโก้ซ้ายบน
 -- วางไว้ที่: StarterPlayer > StarterPlayerScripts
 
 local Players = game:GetService("Players")
@@ -15,41 +15,29 @@ local MAX_SPEED = 300
 local State = {
 	autoFarm = false,
 	weapon = "Melee",
-	speed = 50,
+	speed = 100,
 }
 
--- ข้อมูลสถานะสำหรับแสดงผลบน UI
 local Info = { level = "-", quest = "-", mob = "-", dist = "-" }
 
--- ====== ฟังก์ชันและลอจิกการฟาร์ม (ดึงจากสคริปต์หลักของคุณ)[span_2](start_span)[span_2](end_span) ======
+-- ====== ลอจิกการฟาร์ม ======
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local CommF_ = Remotes:WaitForChild("CommF_")
 local Enemies = Workspace:FindFirstChild("Enemies")
 
--- ฟังก์ชันเช็คว่าตัวละครยังมีชีวิตอยู่หรือไม่[span_3](start_span)[span_3](end_span)
-local function IsEntityAlive(char)
-	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-	return humanoid and humanoid.Health > 0
-end
-
--- ฟังก์ชันคำนวณระยะห่าง[span_4](start_span)[span_4](end_span)
 local function GetDistance(pos)
 	local char = player.Character
 	if not char or not char.PrimaryPart then return math.huge end
 	return (char.PrimaryPart.Position - pos).Magnitude
 end
 
--- ฟังก์ชันเปิดฮาคิ[span_5](start_span)[span_5](end_span)
 local function ActivateHaki()
 	local char = player.Character
 	if char and not char:FindFirstChild("HasBuso") then
-		pcall(function()
-			CommF_:InvokeServer("Buso")
-		end)
+		pcall(function() CommF_:InvokeServer("Buso") end)
 	end
 end
 
--- ฟังก์ชันเลือกอาวุธตามที่ผู้เล่นเลือก[span_6](start_span)[span_6](end_span)
 local function EquipSelectedTool()
 	local backpack = player.Backpack
 	local char = player.Character
@@ -58,21 +46,17 @@ local function EquipSelectedTool()
 	
 	for _, tool in ipairs(backpack:GetChildren()) do
 		if tool:IsA("Tool") and tool.ToolTip == State.weapon then
-			if humanoid then
-				humanoid:EquipTool(tool)
-			end
+			if humanoid then humanoid:EquipTool(tool) end
 			return
 		end
 	end
 end
 
--- ฟังก์ชันเช็คว่าเปิดเควสต์อยู่ไหม[span_7](start_span)[span_7](end_span)
 local function IsQuestOn()
 	local trackFrame = player.PlayerGui:FindFirstChild("TrackedQuestFrame")
 	return trackFrame and trackFrame.Frame.Visible or false
 end
 
--- ฟังก์ชันค้นหามอนสเตอร์[span_8](start_span)[span_8](end_span)
 local function FindEnemy(names)
 	local char = player.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
@@ -99,26 +83,20 @@ local function FindEnemy(names)
 	return nearest
 end
 
--- ฟังก์ชัน Tween เคลื่อนที่ตัวละคร[span_9](start_span)[span_9](end_span)
 local activeTween = nil
 local function ExecuteTween(targetCFrame)
 	local char = player.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 	local hrp = char.HumanoidRootPart
 	
-	if activeTween then
-		activeTween:Cancel()
-	end
+	if activeTween then activeTween:Cancel() end
 	
 	local dist = (hrp.Position - targetCFrame.Position).Magnitude
 	local speed = math.max(State.speed, 50)
 	local timeVal = math.max(0.05, dist / speed)
 	
-	-- ปิดการชนชั่วคราวเพื่อกันติดสิ่งกีดขวาง
 	for _, part in ipairs(char:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.CanCollide = false
-		end
+		if part:IsA("BasePart") then part.CanCollide = false end
 	end
 	
 	hrp.AssemblyLinearVelocity = Vector3.zero
@@ -127,13 +105,9 @@ local function ExecuteTween(targetCFrame)
 end
 
 local function StopTween()
-	if activeTween then
-		activeTween:Cancel()
-		activeTween = nil
-	end
+	if activeTween then activeTween:Cancel(); activeTween = nil end
 end
 
--- ฟังก์ชันดึงข้อมูลเควสต์ตามเลเวล[span_10](start_span)[span_10](end_span)
 local function GetQuestInfo()
 	local level = player.Data.Level.Value
 	local n3, cframe, str4, str5, n4, str6 = 1, CFrame.new(), "", "", level, ""
@@ -168,7 +142,6 @@ local function GetQuestInfo()
 	return { n3, cframe, str4, str6, n4, str5 }
 end
 
--- ฟังก์ชันสู้กับมอนสเตอร์ (เข้าประชิด + โจมตี)[span_11](start_span)[span_11](end_span)
 local function EngageEnemy(enemyNames)
 	local enemy = FindEnemy(enemyNames)
 	if enemy and enemy:FindFirstChild("HumanoidRootPart") then
@@ -180,7 +153,6 @@ local function EngageEnemy(enemyNames)
 		ActivateHaki()
 		EquipSelectedTool()
 		
-		-- ส่งรีโมตโจมตีพื้นฐาน
 		pcall(function()
 			local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
 			if tool and tool:FindFirstChild("LeftClickRemote") then
@@ -192,7 +164,6 @@ local function EngageEnemy(enemyNames)
 	end
 end
 
--- ลูปการทำงานหลักของ Auto Farm[span_12](start_span)[span_12](end_span)
 task.spawn(function()
 	while true do
 		task.wait()
@@ -207,13 +178,9 @@ task.spawn(function()
 					if enemy then
 						EngageEnemy({qInfo[4]})
 					else
-						-- ถ้ายังหามอนไม่เจอ ให้วิ่งไปจุดเกิดมอนสเตอร์
-						if qInfo[2] then
-							ExecuteTween(qInfo[2] * CFrame.new(0, 30, 5))
-						end
+						if qInfo[2] then ExecuteTween(qInfo[2] * CFrame.new(0, 30, 5)) end
 					end
 				else
-					-- ถ้ายังไม่ได้รับเควสต์ ให้เดินไปรับเควสต์
 					if qInfo[2] then
 						local dist = GetDistance(qInfo[2].Position)
 						if dist <= 10 then
@@ -234,7 +201,7 @@ end)
 
 
 -- ==========================================
--- ====== ส่วนการสร้าง UI (Minimal UI) ======
+-- ====== ส่วนการสร้าง UI (พร้อม Scrolling) ======
 -- ==========================================
 
 local C = {
@@ -269,7 +236,7 @@ local gui = make("ScreenGui", {
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
--- ปุ่มโลโก้ลอยมุมซ้ายบน (แสดงขึ้นมาตอนกดปิด UI)[span_13](start_span)[span_13](end_span)
+-- ปุ่มโลโก้ซ้ายบน
 local toggleLogoBtn = make("TextButton", {
 	Name = "ToggleLogoButton",
 	Text = "RBOT",
@@ -285,12 +252,11 @@ local toggleLogoBtn = make("TextButton", {
 round(toggleLogoBtn, 24)
 outline(toggleLogoBtn, C.blue)
 
--- หน้าต่าง UI หลัก[span_14](start_span)[span_14](end_span)
+-- หน้าต่าง UI หลัก (จำกัดความสูงไว้ไม่เกิน 400 พิกเซล เพื่อให้เลื่อนได้)
 local main = make("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(340, 0),
-	AutomaticSize = Enum.AutomaticSize.Y,
+	Size = UDim2.new(0, 340, 0, 400),
 	BackgroundColor3 = C.bg,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
@@ -299,7 +265,7 @@ round(main, 10)
 outline(main, C.line)
 make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, main)
 
--- หัวหน้าต่าง (ใช้สำหรับกดลาก)[span_15](start_span)[span_15](end_span)
+-- หัวหน้าต่าง (สำหรับลาก)
 local header = make("Frame", {
 	Size = UDim2.new(1, 0, 0, 42),
 	BackgroundColor3 = C.head,
@@ -327,7 +293,6 @@ local dot = make("Frame", {
 }, header)
 round(dot, 5)
 
--- ปุ่มกากบาท (ปิดหน้าต่าง UI)[span_16](start_span)[span_16](end_span)
 local closeBtn = make("TextButton", {
 	Text = "X",
 	Font = Enum.Font.GothamBold,
@@ -339,14 +304,20 @@ local closeBtn = make("TextButton", {
 	Size = UDim2.fromOffset(28, 28),
 }, header)
 
-local content = make("Frame", {
-	Size = UDim2.new(1, 0, 0, 0),
-	AutomaticSize = Enum.AutomaticSize.Y,
+-- ส่วนเนื้อหาแบบเลื่อนได้ (ScrollingFrame)
+local scrollingContainer = make("ScrollingFrame", {
+	Size = UDim2.new(1, 0, 1, -42),
 	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	CanvasSize = UDim2.new(0, 0, 0, 0),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	ScrollBarThickness = 4,
+	ScrollBarImageColor3 = C.blue,
 	LayoutOrder = 2,
 }, main)
-make("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, content)
-make("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, content)
+
+make("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, scrollingContainer)
+make("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, scrollingContainer)
 
 local rowOrder = 0
 local function newRow(gap)
@@ -357,7 +328,7 @@ local function newRow(gap)
 		BackgroundColor3 = C.row,
 		BorderSizePixel = 0,
 		LayoutOrder = rowOrder,
-	}, content)
+	}, scrollingContainer)
 	round(f, 8)
 	outline(f, C.line)
 	make("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, f)
@@ -426,7 +397,7 @@ local function switch(parent, initial, onChange)
 	return btn
 end
 
--- แผงแสดงสถานะแบบเรียลไทม์
+-- 1. แผงแสดงสถานะ
 local statusRow = newRow(6)
 local lines = {}
 for i = 1, 5 do lines[i] = label(statusRow, "", i) end
@@ -442,12 +413,10 @@ local function refreshStatus()
 end
 
 task.spawn(function()
-	while task.wait(0.5) do
-		refreshStatus()
-	end
+	while task.wait(0.5) do refreshStatus() end
 end)
 
--- ปุ่มสวิตช์ Auto Farm หลัก[span_17](start_span)[span_17](end_span)
+-- 2. Auto Farm Switch
 local farmRow = newRow()
 local farmLine = titleLine(farmRow, "AUTO FARM")
 switch(farmLine, State.autoFarm, function(on)
@@ -455,7 +424,7 @@ switch(farmLine, State.autoFarm, function(on)
 	refreshStatus()
 end)
 
--- ปุ่มเลือกอาวุธ[span_18](start_span)[span_18](end_span)
+-- 3. เลือกอาวุธ
 local weaponRow = newRow()
 label(weaponRow, "เลือกอาวุธ", 1)
 local weaponGrid = make("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, LayoutOrder = 2 }, weaponRow)
@@ -481,7 +450,66 @@ for _, name in ipairs({ "Melee", "Sword", "Gun", "Fruit" }) do
 	end)
 end
 
--- ระบบลากหน้าต่าง UI[span_19](start_span)[span_19](end_span)
+-- 4. Speed Slider
+local speedRow = newRow()
+local speedLineTitle = titleLine(speedRow, "Speed (ความเร็ว Tween)", 1)
+local speedValueLabel = make("TextLabel", {
+	Font = Enum.Font.GothamMedium,
+	TextSize = 14,
+	RichText = true,
+	TextColor3 = C.text,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 0, 0, 0),
+	Size = UDim2.new(0, 120, 1, 0),
+}, speedLineTitle)
+
+local sliderHit = make("Frame", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, LayoutOrder = 2 }, speedRow)
+local track = make("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BorderSizePixel = 0 }, sliderHit)
+round(track, 2)
+local fill = make("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.blue, BorderSizePixel = 0 }, track)
+round(fill, 2)
+local knob = make("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromOffset(18, 18), BackgroundColor3 = C.blue, BorderSizePixel = 0 }, track)
+round(knob, 9)
+
+local function setSpeed(v)
+	v = math.clamp(math.floor(v + 0.5), 1, MAX_SPEED)
+	State.speed = v
+	local a = (v - 1) / (MAX_SPEED - 1)
+	fill.Size = UDim2.fromScale(a, 1)
+	knob.Position = UDim2.fromScale(a, 0.5)
+	speedValueLabel.Text = string.format('<font color="#1a8fe0">%d</font><font color="#7d7d82"> / %d</font>', v, MAX_SPEED)
+end
+
+setSpeed(State.speed)
+
+local sliding = false
+local function slideTo(x)
+	local rel = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+	setSpeed(1 + rel * (MAX_SPEED - 1))
+end
+
+sliderHit.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliding = true
+		slideTo(input.Position.X)
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		slideTo(input.Position.X)
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliding = false
+	end
+end)
+
+-- ระบบลากหน้าต่าง UI
 local dragging, dragStart, startPos = false, nil, nil
 header.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -504,7 +532,7 @@ UIS.InputEnded:Connect(function(input)
 	end
 end)
 
--- ระบบปิด UI แล้วแสดงโลโก้ซ้ายบน / กดโลโก้เพื่อเปิด UI กลับมา[span_20](start_span)[span_20](end_span)
+-- ระบบปิด/เปิด UI ผ่านปุ่ม X และโลโก้ซ้ายบน
 closeBtn.Activated:Connect(function()
 	main.Visible = false
 	toggleLogoBtn.Visible = true
@@ -515,7 +543,6 @@ toggleLogoBtn.Activated:Connect(function()
 	toggleLogoBtn.Visible = false
 end)
 
--- กดปุ่ม RightShift เพื่อสลับเปิด/ปิด[span_21](start_span)[span_21](end_span)
 UIS.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if input.KeyCode == Enum.KeyCode.RightShift then
