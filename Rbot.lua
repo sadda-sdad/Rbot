@@ -1,4 +1,4 @@
--- Rbot Hud : UIเฉพาะระบบฟาร์ม (LocalScript)
+-- Rbot Hud : UIเฉพาะระบบฟาร์ม + ลากได้ + ปุ่มโลโก้ซ้ายบน (LocalScript)
 -- วางไว้ที่: StarterPlayer > StarterPlayerScripts
 
 local Players = game:GetService("Players")
@@ -21,11 +21,9 @@ local State = {
 -- ====== ส่วนเชื่อมต่อลอจิก (Hooks) ======
 local Hooks = {
 	onAutoFarm = function(on)
-		-- ใส่โค้ดเปิด/ปิดระบบฟาร์มของคุณตรงนี้
 		print("Auto Farm:", on)
 	end,
 	onWeapon = function(name)
-		-- ใส่โค้ดเปลี่ยนอาวุธตรงนี้
 		print("Selected Weapon:", name)
 	end,
 	onAutoStats = function(on)
@@ -78,13 +76,30 @@ local function outline(o, color)
 	}, o)
 end
 
--- ====== สร้างหน้าต่างหลัก ======
+-- ====== สร้าง ScreenGui หลัก ======
 local gui = make("ScreenGui", {
 	Name = "RbotFarmHud",
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
+-- ====== โลโก้ปุ่มเปิด UI (มุมซ้ายบน) ======
+local toggleLogoBtn = make("TextButton", {
+	Name = "ToggleLogoButton",
+	Text = "RBOT",
+	Font = Enum.Font.GothamBold,
+	TextSize = 13,
+	TextColor3 = C.text,
+	BackgroundColor3 = C.chipOn,
+	Position = UDim2.fromOffset(20, 20), -- ซ้ายบน
+	Size = UDim2.fromOffset(48, 48),
+	Visible = false, -- ซ่อนไว้ก่อน พอกดกากบาทจะแสดงขึ้นมา
+	ZIndex = 10,
+}, gui)
+round(toggleLogoBtn, 24) -- ทำให้เป็นรูปวงกลม
+outline(toggleLogoBtn, C.blue)
+
+-- ====== หน้าต่างหลัก ======
 local main = make("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
@@ -126,6 +141,7 @@ local dot = make("Frame", {
 }, header)
 round(dot, 5)
 
+-- ปุ่มกากบาทปิด UI
 local closeBtn = make("TextButton", {
 	Text = "X",
 	Font = Enum.Font.GothamBold,
@@ -309,7 +325,7 @@ local function refreshStatus()
 end
 refreshStatus()
 
--- ====== 1. AUTO FARM (สวิตช์เปิดปิดหลัก) ======
+-- ====== 1. AUTO FARM ======
 local farmRow = newRow()
 local farmLine = titleLine(farmRow, "AUTO FARM")
 switch(farmLine, State.autoFarm, function(on)
@@ -336,14 +352,53 @@ for _, name in ipairs({ "Melee", "Sword", "Gun", "Fruit" }) do
 	end)
 end
 
--- ====== ควบคุมการเปิด-ปิดหน้าต่าง HUD ======
-closeBtn.Activated:Connect(function()
-	main.Visible = false
+-- ====== ระบบการลาก/ย้ายตำแหน่ง UI (Drag) ======
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+header.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+	end
 end)
 
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+-- ====== ระบบปิด/เปิด UI ผ่านปุ่ม X และ โลโก้ซ้ายบน ======
+-- กดปุ่ม X -> ซ่อน UI หลัก + แสดงโลโก้ซ้ายบน
+closeBtn.Activated:Connect(function()
+	main.Visible = false
+	toggleLogoBtn.Visible = true
+end)
+
+-- กดปุ่มโลโก้ซ้ายบน -> แสดง UI หลัก + ซ่อนโลโก้
+toggleLogoBtn.Activated:Connect(function()
+	main.Visible = true
+	toggleLogoBtn.Visible = false
+end)
+
+-- กด RightShift เพื่อสลับเปิด/ปิดได้ด้วย
 UIS.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if input.KeyCode == Enum.KeyCode.RightShift then
 		main.Visible = not main.Visible
+		toggleLogoBtn.Visible = not main.Visible
 	end
 end)
